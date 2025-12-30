@@ -1,6 +1,6 @@
 # Varlord ⚙️
 
-[![PyPI version](https://badge.fury.io/py/varlord.svg)](https://badge.fury.io/py/varlord)
+[![PyPI version](https://img.shields.io/pypi/v/varlord.svg)](https://pypi.org/project/varlord/)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Documentation](https://readthedocs.org/projects/varlord/badge/?version=latest)](https://varlord.readthedocs.io)
@@ -210,6 +210,21 @@ Runtime configuration management with:
 - Thread-safe atomic snapshots
 - Dynamic updates via watch mechanism
 - Change subscriptions
+
+## 🏢 About Agentsmith
+
+**Varlord** is part of the **Agentsmith** open-source ecosystem. Agentsmith is a ToB intelligent agent and algorithm development platform, currently deployed in multiple highway management companies, securities firms, and regulatory agencies in China. The Agentsmith team is gradually open-sourcing the platform by removing proprietary code and algorithm modules, as well as enterprise-specific customizations, while decoupling the system for modular use by the open-source community.
+
+### 🌟 Agentsmith Open-Source Projects
+
+- **[Varlord](https://github.com/lzjever/varlord)** ⚙️ - Configuration management library with multi-source support
+- **[Routilux](https://github.com/lzjever/routilux)** ⚡ - Event-driven workflow orchestration framework
+- **[Serilux](https://github.com/lzjever/serilux)** 📦 - Flexible serialization framework for Python objects
+- **[Lexilux](https://github.com/lzjever/lexilux)** 🚀 - Unified LLM API client library
+
+These projects are modular components extracted from the Agentsmith platform, designed to be used independently or together to build powerful applications.
+
+> **Note**: Currently, GitHub is used for code synchronization and package releases. The team is gradually transitioning to use GitHub as the primary repository.
 
 ## 🤝 Contributing
 
