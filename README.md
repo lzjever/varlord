@@ -3,6 +3,7 @@
 [![PyPI version](https://badge.fury.io/py/varlord.svg)](https://badge.fury.io/py/varlord)
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
+[![Documentation](https://readthedocs.org/projects/varlord/badge/?version=latest)](https://varlord.readthedocs.io)
 
 **Varlord** is a powerful Python configuration management library that provides a unified interface for loading configuration from multiple sources with customizable priority ordering and optional dynamic updates via etcd.
 
@@ -172,6 +173,9 @@ class AppConfig:
 ## 📚 Documentation
 
 Full documentation is available at [https://varlord.readthedocs.io](https://varlord.readthedocs.io)
+
+- **Latest**: [https://varlord.readthedocs.io/en/latest/](https://varlord.readthedocs.io/en/latest/)
+- **Stable**: [https://varlord.readthedocs.io/en/stable/](https://varlord.readthedocs.io/en/stable/)
 
 ## 🎯 Key Concepts
 
