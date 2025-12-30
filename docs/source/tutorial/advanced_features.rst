@@ -358,7 +358,7 @@ correctly.
 **Pitfall 2: Not normalizing keys in custom sources**
 
 .. code-block:: python
-   :emphasize-lines: 8
+   :emphasize-lines: 3
 
    def load(self) -> Mapping[str, Any]:
        data = json.load(f)
@@ -370,7 +370,7 @@ consistency with other sources.
 **Pitfall 3: Not handling errors in custom sources**
 
 .. code-block:: python
-   :emphasize-lines: 4
+   :emphasize-lines: 3
 
    def load(self) -> Mapping[str, Any]:
        with open(self._file_path) as f:

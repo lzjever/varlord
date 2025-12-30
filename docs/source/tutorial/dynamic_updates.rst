@@ -360,7 +360,7 @@ Common Pitfalls
 **Pitfall 1: Expecting automatic updates from non-watchable sources**
 
 .. code-block:: python
-   :emphasize-lines: 8-9
+   :emphasize-lines: 3-4
 
    store = cfg.load_store()
    # Change environment variable
@@ -375,7 +375,7 @@ automatic updates.
 **Pitfall 2: Modifying configuration objects**
 
 .. code-block:: python
-   :emphasize-lines: 3
+   :emphasize-lines: 2
 
    config = store.get()
    config.port = 9000  # This will fail - config is frozen!

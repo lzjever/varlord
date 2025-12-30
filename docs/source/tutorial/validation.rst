@@ -487,7 +487,7 @@ fields that may not always be set.
 **Pitfall 2: Not handling ValidationError**
 
 .. code-block:: python
-   :emphasize-lines: 8
+   :emphasize-lines: 1
 
    app = cfg.load()  # May raise ValidationError
    print(app.port)  # This line won't execute if validation fails
@@ -498,7 +498,7 @@ errors gracefully.
 **Pitfall 3: Validating nested objects manually**
 
 .. code-block:: python
-   :emphasize-lines: 10-11
+   :emphasize-lines: 7-8
 
    @dataclass(frozen=True)
    class AppConfig:
