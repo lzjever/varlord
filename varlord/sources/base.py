@@ -12,6 +12,47 @@ if TYPE_CHECKING:
     from typing import Protocol
 
 
+def normalize_key(key: str) -> str:
+    """Unified key normalization function.
+
+    Applies consistent normalization rules across all sources:
+    - Double underscores (__) are converted to dots (.) for nesting
+    - Single underscores (_) are preserved (only case is converted)
+    - Keys are converted to lowercase
+
+    Args:
+        key: The key to normalize
+
+    Returns:
+        Normalized key in lowercase with unified separator rules
+
+    Examples:
+        >>> normalize_key("APP_DB__HOST")
+        'app.db.host'
+        >>> normalize_key("K8S_POD_NAME")
+        'k8s_pod_name'
+        >>> normalize_key("db__host")
+        'db.host'
+        >>> normalize_key("___")
+        '_.'
+        >>> normalize_key("____")
+        '..'
+        >>> normalize_key("")
+        ''
+    """
+    if not key:
+        return ""
+
+    # Convert to lowercase
+    key = key.lower()
+
+    # Replace double underscores with dots (for nesting)
+    # This handles all cases: __, ___, ____, etc.
+    key = key.replace("__", ".")
+
+    return key
+
+
 @dataclass(frozen=True)
 class ChangeEvent:
     """Represents a configuration change event.

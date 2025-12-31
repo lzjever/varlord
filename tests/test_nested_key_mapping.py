@@ -65,7 +65,7 @@ def test_env_cli_override_nested():
             model=AppConfig,
             sources=[
                 sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_", separator="__"),
+                sources.Env(prefix="APP_"),
                 sources.CLI(model=AppConfig),
             ],
         )
@@ -99,7 +99,7 @@ def test_unified_key_format():
             model=AppConfig,
             sources=[
                 sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_", separator="__"),
+                sources.Env(prefix="APP_"),
                 sources.CLI(model=AppConfig),
             ],
         )

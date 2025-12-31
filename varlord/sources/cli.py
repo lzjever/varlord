@@ -9,7 +9,7 @@ import sys
 import argparse
 from typing import Mapping, Any, Optional, List
 
-from varlord.sources.base import Source
+from varlord.sources.base import Source, normalize_key
 
 
 class CLI(Source):
@@ -101,22 +101,45 @@ class CLI(Source):
         key_mapping = {}  # normalized_key -> argparse_dest_key
 
         # Add arguments based on model fields
-        for normalized_key, field_type in field_types.items():
-            # Convert normalized key to argument name: db.host -> db-host
-            arg_name = normalized_key.replace(".", "-").replace("_", "-")
+        for field_key, field_type in field_types.items():
+            # Normalize field key using unified rules
+            normalized_key = normalize_key(field_key)
+            # Convert normalized key to argument names: support both - and _
+            arg_name_hyphen = normalized_key.replace(".", "-").replace("_", "-")
+            arg_name_underscore = normalized_key.replace(".", "_")
             # Use underscore for argparse dest (argparse doesn't like dots)
             argparse_dest = normalized_key.replace(".", "_")
             key_mapping[normalized_key] = argparse_dest
 
             try:
                 if field_type == bool:
-                    # Boolean flags: --flag and --no-flag
+                    # Boolean flags: --flag and --no-flag (support both - and _)
                     parser.add_argument(
-                        f"--{arg_name}", action="store_true", default=None, dest=argparse_dest
+                        f"--{arg_name_hyphen}",
+                        action="store_true",
+                        default=None,
+                        dest=argparse_dest,
                     )
+                    if arg_name_hyphen != arg_name_underscore:
+                        parser.add_argument(
+                            f"--{arg_name_underscore}",
+                            action="store_true",
+                            default=None,
+                            dest=argparse_dest,
+                        )
                     parser.add_argument(
-                        f"--no-{arg_name}", dest=argparse_dest, action="store_false", default=None
+                        f"--no-{arg_name_hyphen}",
+                        dest=argparse_dest,
+                        action="store_false",
+                        default=None,
                     )
+                    if arg_name_hyphen != arg_name_underscore:
+                        parser.add_argument(
+                            f"--no-{arg_name_underscore}",
+                            dest=argparse_dest,
+                            action="store_false",
+                            default=None,
+                        )
                 else:
                     # Use a wrapper to handle type conversion errors gracefully
                     def make_type_converter(ftype):
@@ -130,11 +153,18 @@ class CLI(Source):
                         return converter
 
                     parser.add_argument(
-                        f"--{arg_name}",
+                        f"--{arg_name_hyphen}",
                         type=make_type_converter(field_type),
                         default=None,
                         dest=argparse_dest,
                     )
+                    if arg_name_hyphen != arg_name_underscore:
+                        parser.add_argument(
+                            f"--{arg_name_underscore}",
+                            type=make_type_converter(field_type),
+                            default=None,
+                            dest=argparse_dest,
+                        )
             except Exception:
                 # If adding argument fails, skip it
                 pass
@@ -143,14 +173,12 @@ class CLI(Source):
         argv = self._argv if self._argv is not None else sys.argv[1:]
         args, _ = parser.parse_known_args(argv)
 
-        # Convert to dict with normalized keys (dot notation, lowercase)
+        # Convert to dict with normalized keys
         result = {}
         for normalized_key, argparse_dest in key_mapping.items():
             value = getattr(args, argparse_dest, None)
             if value is not None:
-                # Normalize key to lowercase for consistency
-                normalized_key_lower = normalized_key.lower()
-                result[normalized_key_lower] = value
+                result[normalized_key] = value
 
         return result
 

@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import Mapping, Any, Type
 from dataclasses import fields, is_dataclass
 
-from varlord.sources.base import Source
+from varlord.sources.base import Source, normalize_key
 
 
 class Defaults(Source):
@@ -34,9 +34,23 @@ class Defaults(Source):
 
         Args:
             model: The dataclass model to extract defaults from.
+
+        Raises:
+            TypeError: If model is not a dataclass
+            ValueError: If any field name contains double underscores (__)
         """
         if not is_dataclass(model):
             raise TypeError(f"Model must be a dataclass, got {type(model)}")
+
+        # Validate field names: disallow double underscores
+        for field in fields(model):
+            if "__" in field.name:
+                raise ValueError(
+                    f"Field name '{field.name}' in {model.__name__} contains double underscores (__). "
+                    "Double underscores are reserved for nested configuration. "
+                    "Use nested dataclasses or single underscores instead."
+                )
+
         self._model = model
 
     @property
@@ -59,13 +73,15 @@ class Defaults(Source):
             # field.default is ... means no default
             # field.default is _MISSING_TYPE also means no default
             if field.default is not ... and not isinstance(field.default, _MISSING_TYPE):
-                result[field.name] = field.default
+                normalized_key = normalize_key(field.name)
+                result[normalized_key] = field.default
             elif field.default_factory is not ... and not isinstance(
                 field.default_factory, _MISSING_TYPE
             ):
                 # Handle default_factory
                 try:
-                    result[field.name] = field.default_factory()
+                    normalized_key = normalize_key(field.name)
+                    result[normalized_key] = field.default_factory()
                 except Exception:
                     # If factory fails, skip this field
                     pass

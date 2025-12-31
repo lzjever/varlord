@@ -19,7 +19,7 @@ try:
 except ImportError:
     etcd3 = None  # type: ignore
 
-from varlord.sources.base import Source, ChangeEvent
+from varlord.sources.base import Source, ChangeEvent, normalize_key
 
 
 class Etcd(Source):
@@ -111,8 +111,10 @@ class Etcd(Source):
 
                 # Convert to string and normalize
                 key_str = key_bytes[len(prefix_bytes) :].decode("utf-8")
-                # Convert / to . for nested keys, and lowercase for consistency
-                normalized_key = key_str.replace("/", ".").lower()
+                # Convert / to __ (path separator to double underscore for nesting)
+                key_str = key_str.replace("/", "__")
+                # Apply unified normalization
+                normalized_key = normalize_key(key_str)
 
                 # Decode value
                 if value:
@@ -169,7 +171,8 @@ class Etcd(Source):
             if not key_bytes.startswith(prefix_bytes):
                 continue
             key_str = key_bytes[len(prefix_bytes) :].decode("utf-8")
-            normalized_key = key_str.replace("/", ".")
+            key_str = key_str.replace("/", "__")
+            normalized_key = normalize_key(key_str)
             initial_state[normalized_key] = value
 
         # Watch for changes
@@ -186,7 +189,8 @@ class Etcd(Source):
                     continue
 
                 key_str = key_bytes[len(prefix_bytes) :].decode("utf-8")
-                normalized_key = key_str.replace("/", ".")
+                key_str = key_str.replace("/", "__")
+                normalized_key = normalize_key(key_str)
 
                 # Determine event type and values
                 if hasattr(event, "type"):

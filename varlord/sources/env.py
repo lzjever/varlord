@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from typing import Mapping, Any, Optional, Callable
 
-from varlord.sources.base import Source
+from varlord.sources.base import Source, normalize_key
 
 
 class Env(Source):
@@ -28,7 +28,7 @@ class Env(Source):
 
         >>> # With nested key support
         >>> # Environment: APP_DB__HOST=localhost
-        >>> source = Env(prefix="APP_", separator="__")
+        >>> source = Env(prefix="APP_")
         >>> source.load()
         {'db.host': 'localhost'}
     """
@@ -36,19 +36,16 @@ class Env(Source):
     def __init__(
         self,
         prefix: str = "",
-        separator: str = "__",
         normalize_key: Optional[Callable[[str], str]] = None,
     ):
         """Initialize Env source.
 
         Args:
             prefix: Prefix to filter environment variables (e.g., ``"APP_"``)
-            separator: Separator used in env var names for nesting (default: "__")
             normalize_key: Optional function to normalize keys.
-                          If None, uses default normalization (lowercase, replace separator with ".")
+                          If None, uses unified normalization (__ -> ., _ preserved, lowercase)
         """
         self._prefix = prefix
-        self._separator = separator
         self._normalize_key = normalize_key or self._default_normalize
 
     @property
@@ -59,20 +56,15 @@ class Env(Source):
     def _default_normalize(self, key: str) -> str:
         """Default key normalization.
 
-        Converts "APP_DB__HOST" -> "db.host" (assuming prefix="APP_", separator="__")
+        Converts "APP_DB__HOST" -> "db.host" (assuming prefix="APP_")
+        Uses unified normalization: __ -> ., _ preserved, lowercase
         """
         # Remove prefix
         if self._prefix and key.startswith(self._prefix):
             key = key[len(self._prefix) :]
 
-        # Convert to lowercase
-        key = key.lower()
-
-        # Replace separator with dot
-        if self._separator:
-            key = key.replace(self._separator, ".")
-
-        return key
+        # Apply unified normalization
+        return normalize_key(key)
 
     def load(self) -> Mapping[str, Any]:
         """Load configuration from environment variables.
@@ -96,4 +88,4 @@ class Env(Source):
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"<Env(prefix={self._prefix!r}, separator={self._separator!r})>"
+        return f"<Env(prefix={self._prefix!r})>"

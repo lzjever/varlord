@@ -13,7 +13,7 @@ try:
 except ImportError:
     dotenv_values = None  # type: ignore
 
-from varlord.sources.base import Source
+from varlord.sources.base import Source, normalize_key
 
 
 class DotEnv(Source):
@@ -71,13 +71,10 @@ class DotEnv(Source):
             return {}
         raw_values = dotenv_values(self._dotenv_path, encoding=self._encoding) or {}
 
-        # Normalize keys to lowercase for consistency
-        # Note: We only convert case, not separators. For nested keys with dot notation,
-        # use Env source with DotEnv (DotEnv loads into env, Env normalizes)
+        # Normalize keys using unified rules
         result = {}
         for key, value in raw_values.items():
-            # Convert to lowercase only
-            normalized_key = key.lower()
+            normalized_key = normalize_key(key)
             result[normalized_key] = value
 
         return result

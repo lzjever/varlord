@@ -20,11 +20,11 @@ def test_env_basic(monkeypatch):
 
 
 def test_env_nested_keys(monkeypatch):
-    """Test nested keys with separator."""
+    """Test nested keys with unified normalization."""
     monkeypatch.setenv("APP_DB__HOST", "localhost")
     monkeypatch.setenv("APP_DB__PORT", "5432")
 
-    source = Env(prefix="APP_", separator="__")
+    source = Env(prefix="APP_")
     config = source.load()
 
     assert config["db.host"] == "localhost"
@@ -38,7 +38,7 @@ def test_env_no_prefix(monkeypatch):
     source = Env(prefix="")
     config = source.load()
 
-    assert "some.var" in config or "some_var" in config
+    assert "some_var" in config  # Single _ preserved
 
 
 def test_env_name():

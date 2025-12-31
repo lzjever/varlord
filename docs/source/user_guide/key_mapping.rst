@@ -8,13 +8,22 @@ conventions for each source.
 Overview
 --------
 
-All sources return normalized keys using:
-- **Dot notation** (e.g., ``"db.host"``) for nested configuration
-- **Lowercase** for consistency across all sources
+All sources in Varlord use a **unified normalization rule** for consistency:
 
-This ensures that keys from different sources can properly override each other.
-However, each source has different rules for how it reads and transforms external
-names into these normalized keys.
+1. **Double underscores (``__``)** → **Dots (``.``)** for nested configuration
+2. **Single underscores (``_``)** → **Preserved** (only case is converted)
+3. **All keys** → **Lowercase** for consistency
+
+This unified rule ensures that:
+- Keys from different sources can properly override each other
+- Nested configuration uses dot notation (e.g., ``db.host``)
+- Flat keys with underscores are preserved (e.g., ``k8s_pod_name``)
+- All sources behave consistently
+
+**Examples**:
+- ``APP_DB__HOST`` → ``db.host`` (``__`` becomes ``.``)
+- ``K8S_POD_NAME`` → ``k8s_pod_name`` (single ``_`` preserved)
+- ``db__host`` → ``db.host`` (``__`` becomes ``.``)
 
 Mapping Rules by Source
 ------------------------
@@ -26,7 +35,7 @@ Defaults
 
 **Input**: Dataclass field names
 
-**Mapping**: Direct mapping, no transformation
+**Mapping**: Unified normalization (``__`` → ``.``, ``_`` preserved, lowercase)
 
 **Example**:
 
@@ -36,14 +45,16 @@ Defaults
    class AppConfig:
        host: str = "localhost"
        db_host: str = "127.0.0.1"
-       api_timeout: int = 30
+       db__host: str = "127.0.0.1"
+       k8s_pod_name: str = "default-pod"
    
-   # Returns: {"host": "localhost", "db_host": "127.0.0.1", "api_timeout": 30}
+   # Returns: {"host": "localhost", "db_host": "127.0.0.1", "db.host": "127.0.0.1", "k8s_pod_name": "default-pod"}
 
 **Notes**:
-- Field names are used as-is
-- No prefix filtering
-- No case conversion
+- Field names are normalized using unified rules
+- ``__`` in field names becomes ``.`` (for nesting)
+- Single ``_`` is preserved
+- All keys are lowercase
 - Supports nested dataclasses (fields become ``"parent.child"``)
 
 Env (Environment Variables)
@@ -57,8 +68,7 @@ Env (Environment Variables)
 
 1. **Prefix filtering**: Only variables with the specified prefix are loaded
 2. **Prefix removal**: The prefix is stripped from the variable name
-3. **Case conversion**: Variable names are converted to lowercase
-4. **Separator replacement**: The separator (default: ``"__"``) is replaced with ``"."``
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
 
 **Example**:
 
@@ -69,21 +79,22 @@ Env (Environment Variables)
    # APP_PORT=9000
    # APP_DB__HOST=localhost
    # APP_DB__PORT=5432
+   # APP_K8S_POD_NAME=my-pod
    # OTHER_VAR=ignored
    
-   source = Env(prefix="APP_", separator="__")
-   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "db.port": "5432"}
+   source = Env(prefix="APP_")
+   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "db.port": "5432", "k8s_pod_name": "my-pod"}
 
 **Mapping Details**:
 
-- ``APP_HOST`` → ``host`` (prefix removed, lowercase)
-- ``APP_DB__HOST`` → ``db.host`` (prefix removed, separator ``__`` → ``.``, lowercase)
-- ``APP_API_TIMEOUT`` → ``api.timeout`` (if separator is ``_``)
+- ``APP_HOST`` → ``host`` (prefix removed, unified normalization)
+- ``APP_DB__HOST`` → ``db.host`` (prefix removed, ``__`` → ``.``)
+- ``APP_K8S_POD_NAME`` → ``k8s_pod_name`` (prefix removed, single ``_`` preserved)
 - ``OTHER_VAR`` → ignored (no prefix match)
 
 **Custom Normalization**:
 
-You can provide a custom normalization function:
+You can provide a custom normalization function to override the default:
 
 .. code-block:: python
 
@@ -103,33 +114,33 @@ CLI (Command-Line Arguments)
 **Mapping Rules**:
 
 1. **Prefix removal**: The ``--`` prefix is removed
-2. **Hyphen to dot**: Hyphens are converted to dots (for consistency with other sources)
-3. **Type conversion**: Values are converted based on model field types
+2. **Hyphen and underscore equivalence**: Both ``-`` and ``_`` are treated the same
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+4. **Type conversion**: Values are converted based on model field types
 
 **Example**:
 
 .. code-block:: python
 
-   # Command line: python app.py --host 0.0.0.0 --port 9000 --db-host localhost --debug
+   # Command line: python app.py --host 0.0.0.0 --port 9000 --db-host localhost --k8s-pod-name my-pod --debug
+   # Or equivalently: --db_host, --k8s_pod_name (both work)
    
-   source = CLI()
-   # Returns: {"host": "0.0.0.0", "port": 9000, "db.host": "localhost", "debug": True}
+   source = CLI(model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": 9000, "db.host": "localhost", "k8s_pod_name": "my-pod", "debug": True}
 
 **Mapping Details**:
 
 - ``--host`` → ``host``
-- ``--db-host`` → ``db.host`` (hyphen → dot, unified with Env/Etcd)
-- ``--api-timeout`` → ``api.timeout``
+- ``--db-host`` or ``--db_host`` → ``db.host`` (both ``-`` and ``_`` work, ``__`` becomes ``.``)
+- ``--k8s-pod-name`` or ``--k8s_pod_name`` → ``k8s_pod_name`` (both ``-`` and ``_`` work, single ``_`` preserved)
 - ``--debug`` → ``debug`` (boolean flag, becomes ``True``)
 - ``--no-debug`` → ``debug: False`` (negation flag)
 
-**Nested Keys**:
+**Special Behavior**:
 
-CLI uses dot notation for nested keys, consistent with other sources:
-
-- ``--db-host`` → ``db.host`` (automatically maps to nested dataclass)
-- ``--api-timeout`` → ``api.timeout``
-- This allows CLI to properly override Env/Etcd values for nested configuration
+CLI treats hyphens and underscores equivalently, allowing flexible command-line syntax:
+- ``--db-host`` and ``--db_host`` both work (if field is ``db__host`` or ``db_host``)
+- The unified normalization rule applies after converting ``-`` to ``_``
 
 DotEnv (.env Files)
 ~~~~~~~~~~~~~~~~~~~
@@ -140,9 +151,8 @@ DotEnv (.env Files)
 
 **Mapping Rules**:
 
-1. **Case conversion**: Keys are converted to lowercase
-2. **No separator replacement**: Underscores are preserved (unlike Env source)
-3. **No prefix filtering**: All keys from .env file are loaded
+1. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+2. **No prefix filtering**: All keys from .env file are loaded
 
 **Example**:
 
@@ -152,31 +162,32 @@ DotEnv (.env Files)
    # HOST=0.0.0.0
    # PORT=9000
    # DB_HOST=localhost
-   # DB_PORT=5432
+   # DB__HOST=localhost
+   # K8S_POD_NAME=my-pod
    
    source = DotEnv(".env")
-   # Returns: {"host": "0.0.0.0", "port": "9000", "db_host": "localhost", "db_port": "5432"}
-   # Note: Only case is converted, underscores are preserved
+   # Returns: {"host": "0.0.0.0", "port": "9000", "db_host": "localhost", "db.host": "localhost", "k8s_pod_name": "my-pod"}
 
 **Notes**:
-- Keys are converted to lowercase for consistency
-- Underscores are preserved (not converted to dots)
+- Keys are normalized using unified rules
+- ``__`` becomes ``.`` (for nesting)
+- Single ``_`` is preserved
+- All keys are lowercase
 - No prefix filtering
-- For nested keys with dot notation, use ``Env`` source with ``DotEnv``
 
 **Best Practice**:
 
-Use ``DotEnv`` with ``Env`` for automatic normalization with nested keys:
+Use ``DotEnv`` with ``Env`` for prefix filtering:
 
 .. code-block:: python
 
-   # .env file uses APP_ prefix and __ separator for nesting
+   # .env file uses APP_ prefix
    # APP_HOST=0.0.0.0
    # APP_DB__HOST=localhost
    
    sources = [
        sources.DotEnv(".env"),  # Loads into environment
-       sources.Env(prefix="APP_", separator="__"),  # Normalizes keys (db.host)
+       sources.Env(prefix="APP_"),  # Filters and normalizes keys
    ]
 
 Etcd
@@ -189,9 +200,8 @@ Etcd
 **Mapping Rules**:
 
 1. **Prefix removal**: The specified prefix is removed from the key path
-2. **Path to dot notation**: Path separators (``/``) are converted to dots (``.``)
-3. **Case conversion**: Keys are converted to lowercase for consistency
-4. **Leading/trailing cleanup**: Leading and trailing slashes are removed
+2. **Path separator conversion**: Path separators (``/``) are converted to ``__``
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
 
 **Example**:
 
@@ -202,15 +212,16 @@ Etcd
    # /app/Port = "9000"
    # /app/DB/Host = "localhost"
    # /app/DB/Port = "5432"
+   # /app/k8s_pod_name = "my-pod"
    
    source = Etcd(host="127.0.0.1", prefix="/app/")
-   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "db.port": "5432"}
+   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "db.port": "5432", "k8s_pod_name": "my-pod"}
 
 **Mapping Details**:
 
-- ``/app/Host`` → ``host`` (prefix removed, lowercase)
-- ``/app/DB/Host`` → ``db.host`` (prefix removed, ``/`` → ``.``, lowercase)
-- ``/app/API/Timeout`` → ``api.timeout``
+- ``/app/Host`` → ``host`` (prefix removed, unified normalization)
+- ``/app/DB/Host`` → ``db.host`` (prefix removed, ``/`` → ``__`` → ``.``)
+- ``/app/k8s_pod_name`` → ``k8s_pod_name`` (prefix removed, single ``_`` preserved)
 - ``/other/key`` → ignored (no prefix match)
 
 **Nested Structure**:
@@ -226,6 +237,8 @@ Etcd's hierarchical structure naturally maps to nested configuration:
    
    # Maps to:
    # {"db.host": "localhost", "db.port": "5432", "api.timeout": "30"}
+   
+   # Note: Path separator "/" becomes "__" then "." via unified normalization
 
 Comparison Table
 ----------------
@@ -237,11 +250,15 @@ Comparison Table
 +------------------+------------------+------------------+------------------+------------------+
 | Prefix filter    | No               | Yes (optional)   | No               | No               |
 +------------------+------------------+------------------+------------------+------------------+
-| Case conversion  | No               | Yes (lowercase)  | Yes (lowercase)  | Yes (lowercase)  |
+| Normalization    | Unified rule     | Unified rule     | Unified rule     | Unified rule     |
 +------------------+------------------+------------------+------------------+------------------+
-| Separator        | N/A              | ``__`` → ``.``   | ``-`` → ``.``    | No conversion    |
+| ``__`` handling  | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   |
 +------------------+------------------+------------------+------------------+------------------+
-| Nested keys      | ``parent.child`` | ``PARENT__CHILD``|``--parent-child``| ``PARENT_CHILD`` |
+| ``_`` handling   | Preserved        | Preserved        | Preserved        | Preserved        |
++------------------+------------------+------------------+------------------+------------------+
+| CLI special      | N/A              | N/A              | ``-`` = ``_``    | N/A              |
++------------------+------------------+------------------+------------------+------------------+
+| Nested keys      | ``parent__child``| ``PARENT__CHILD``|``--parent-child``| ``PARENT__CHILD``|
 +------------------+------------------+------------------+------------------+------------------+
 | Type conversion  | Native types     | Strings          | Based on model   | Strings          |
 +------------------+------------------+------------------+------------------+------------------+
@@ -249,9 +266,13 @@ Comparison Table
 +------------------+------------------+------------------+------------------+------------------+
 | Example output   | ``host``         | ``host``         | ``host``         | ``host``         |
 +------------------+------------------+------------------+------------------+------------------+
-| Nested example   | ``db.host``      | ``APP_DB__HOST`` | ``--db-host``    | ``DB_HOST``      |
+| Nested example   | ``db__host``     | ``APP_DB__HOST`` | ``--db-host``    | ``DB__HOST``     |
 +------------------+------------------+------------------+------------------+------------------+
 | Nested output    | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      |
++------------------+------------------+------------------+------------------+------------------+
+| Underscore ex.   | ``k8s_pod_name`` |``APP_K8S_POD``   |``--k8s-pod-name``|``K8S_POD_NAME``  |
++------------------+------------------+------------------+------------------+------------------+
+| Underscore out   | ``k8s_pod_name`` | ``k8s_pod``      | ``k8s_pod_name`` | ``k8s_pod_name`` |
 +------------------+------------------+------------------+------------------+------------------+
 
 +------------------+------------------+
@@ -261,9 +282,13 @@ Comparison Table
 +------------------+------------------+
 | Prefix filter    | Yes (required)   |
 +------------------+------------------+
-| Case conversion  | Yes (lowercase)  |
+| Normalization    | Unified rule     |
 +------------------+------------------+
-| Separator        | ``/`` → ``.``    |
+| Path separator   | ``/`` → ``__``   |
++------------------+------------------+
+| ``__`` handling  | ``__`` → ``.``   |
++------------------+------------------+
+| ``_`` handling   | Preserved        |
 +------------------+------------------+
 | Nested keys      | ``/parent/child``|
 +------------------+------------------+
@@ -272,6 +297,10 @@ Comparison Table
 | Example input    | ``/app/Host``    |
 +------------------+------------------+
 | Example output   | ``host``         |
++------------------+------------------+
+| Nested example   | ``/app/DB/Host`` |
++------------------+------------------+
+| Nested output    | ``db.host``      |
 +------------------+------------------+
 
 Common Patterns
@@ -287,7 +316,7 @@ To use nested configuration, use dot notation in your source keys:
 .. code-block:: python
 
    # Environment: APP_DB__HOST=localhost APP_DB__PORT=5432
-   source = Env(prefix="APP_", separator="__")
+   source = Env(prefix="APP_")
    # Returns: {"db.host": "localhost", "db.port": "5432"}
 
 **CLI**:
@@ -326,22 +355,98 @@ Use prefixes to isolate configuration from different applications:
    # Only load /app/* keys
    source = Etcd(prefix="/app/")
 
+Fields with Underscores (e.g., ``k8s_pod_name``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When your dataclass field names contain single underscores (not intended for nesting),
+all sources preserve the underscores using the unified normalization rule. Here's how
+each source handles overriding such fields:
+
+**Defaults**:
+
+.. code-block:: python
+
+   @dataclass
+   class AppConfig:
+       k8s_pod_name: str = "default-pod"
+   
+   # Returns: {"k8s_pod_name": "default-pod"}
+   # Note: Single underscores are preserved by unified normalization
+
+**CLI**:
+
+.. code-block:: python
+
+   # Command line: --k8s-pod-name my-pod
+   # Or: --k8s_pod_name my-pod (both work)
+   source = CLI(model=AppConfig)
+   # Returns: {"k8s_pod_name": "my-pod"}
+   # Note: Both hyphens and underscores work, unified normalization preserves single _
+
+**DotEnv**:
+
+.. code-block:: python
+
+   # .env file: K8S_POD_NAME=my-pod
+   source = DotEnv(".env")
+   # Returns: {"k8s_pod_name": "my-pod"}
+   # Note: Unified normalization preserves single underscores
+
+**Env**:
+
+.. code-block:: python
+
+   # Environment: APP_K8S_POD_NAME=my-pod
+   source = Env(prefix="APP_")
+   # Returns: {"k8s_pod_name": "my-pod"}
+   # Note: Unified normalization preserves single underscores automatically
+
+**Etcd**:
+
+.. code-block:: python
+
+   # Etcd: /app/k8s_pod_name = my-pod
+   source = Etcd(prefix="/app/")
+   # Returns: {"k8s_pod_name": "my-pod"}
+   # Note: Unified normalization preserves single underscores
+
+**Summary**:
+
+All sources use the unified normalization rule:
+- **Single underscores (``_``)**: Preserved in output
+- **Double underscores (``__``)**: Converted to dots (``.``) for nesting
+- **All keys**: Converted to lowercase
+
+This ensures consistent behavior across all sources, making it easy to override
+configuration values regardless of the source type.
+
 Best Practices
 --------------
 
-1. **Unified format**: All sources now use unified lowercase dot notation, ensuring
-   consistent key mapping across all sources
+1. **Unified normalization**: All sources use the same normalization rules:
+   - ``__`` → ``.`` for nesting
+   - Single ``_`` preserved
+   - All keys lowercase
+   This ensures consistent behavior across all sources.
 
-2. **Prefix usage**: Use prefixes to avoid conflicts (e.g., ``APP_`` for environment variables)
+2. **Nested configuration**: Use double underscores (``__``) in your source keys to create
+   nested configuration:
+   - Environment: ``APP_DB__HOST=localhost`` → ``db.host``
+   - CLI: ``--db-host`` or ``--db_host`` → ``db.host``
+   - Etcd: ``/app/DB/Host`` → ``db.host``
 
-3. **Case insensitivity**: All sources normalize keys to lowercase, so you don't need to
-   worry about case mismatches between sources
+3. **Flat keys with underscores**: Use single underscores (``_``) for flat keys:
+   - Environment: ``APP_K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
+   - CLI: ``--k8s-pod-name`` or ``--k8s_pod_name`` → ``k8s_pod_name``
+   - DotEnv: ``K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
 
-4. **Nested structures**: Use dot notation for nested configuration to leverage
-   Varlord's automatic mapping to nested dataclasses
+4. **Prefix usage**: Use prefixes to avoid conflicts (e.g., ``APP_`` for environment variables)
 
-5. **Type safety**: Use CLI or model-based sources when you need automatic type conversion
+5. **CLI flexibility**: CLI treats hyphens and underscores equivalently, so you can use
+   either ``--db-host`` or ``--db_host`` (both work)
 
-6. **Override behavior**: With unified key format (lowercase + dot notation), later sources
-   in the list will correctly override earlier ones, regardless of the source type
+6. **Type safety**: Use CLI or model-based sources when you need automatic type conversion
+
+7. **Override behavior**: With unified normalization, later sources in the list will correctly
+   override earlier ones, regardless of the source type
 

@@ -233,7 +233,7 @@ def test_nested_configuration_env():
             model=AppConfig,
             sources=[
                 sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_", separator="__"),
+                sources.Env(prefix="APP_"),
             ],
         )
 
@@ -313,7 +313,7 @@ def test_nested_configuration_deep():
             model=AppConfig,
             sources=[
                 sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_", separator="__"),
+                sources.Env(prefix="APP_"),
             ],
         )
 
