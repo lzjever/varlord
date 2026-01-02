@@ -764,10 +764,12 @@ class Config:
             lines = []
             lines.append("Configuration Source Priority and Details:")
             lines.append("")
-            lines.append("  1. Model Defaults (lowest priority)")
+            # Include defaults (always first)
+            defaults_source = all_sources[0] if all_sources else None
+            if defaults_source:
+                lines.append(f"  1. {defaults_source.name} (lowest priority) - {str(defaults_source)}")
             for i, source in enumerate(all_sources[1:], start=2):
-                source_name = self._get_readable_source_name(source.name)
-                lines.append(f"  {i}. {source_name}")
+                lines.append(f"  {i}. {source.name} - {str(source)}")
             lines.append("")
             return "\n".join(lines)
 
@@ -775,7 +777,7 @@ class Config:
         table.field_names = [
             "Priority",
             "Source Name",
-            "Parameters",
+            "Instance",
             "Load Time (ms)",
             "Watch Support",
             "Last Update",
@@ -790,18 +792,16 @@ class Config:
             table.add_row(
                 [
                     "1 (lowest)",
-                    "Model Defaults",
-                    "N/A",
+                    defaults_source.name,
+                    str(defaults_source),
                     f"{load_time:.2f}",
-                    "No",
+                    "Yes" if defaults_source.supports_watch() else "No",
                     "N/A",
                 ]
             )
 
         # Add user sources
         for i, source in enumerate(all_sources[1:], start=2):
-            source_name = self._get_readable_source_name(source.name)
-            params = self._get_source_parameters(source)
             load_time = self._measure_source_load_time(source)
             watch_support = "Yes" if source.supports_watch() else "No"
             last_update = "N/A"  # TODO: Track last update time if needed
@@ -809,8 +809,8 @@ class Config:
             table.add_row(
                 [
                     str(i),
-                    source_name,
-                    params,
+                    source.name,
+                    str(source),
                     f"{load_time:.2f}",
                     watch_support,
                     last_update,
@@ -826,67 +826,6 @@ class Config:
         lines.append("")
 
         return "\n".join(lines)
-
-    def _get_readable_source_name(self, source_name: str) -> str:
-        """Get readable name for a source.
-
-        Args:
-            source_name: Source name
-
-        Returns:
-            Readable source name
-        """
-        name_map = {
-            "env": "Environment Variables",
-            "cli": "Command Line Arguments",
-            "dotenv": ".env File",
-            "etcd": "Etcd",
-            "defaults": "Model Defaults",
-        }
-        return name_map.get(source_name, source_name.capitalize())
-
-    def _get_source_parameters(self, source: Source) -> str:
-        """Get source parameters as a string.
-
-        Args:
-            source: Source instance
-
-        Returns:
-            Parameters string
-        """
-        try:
-            # Try to get parameters from source attributes
-            params = []
-            source_type = type(source).__name__
-
-            if source_type == "Env":
-                # Env has no prefix anymore, just model
-                params.append("model-based")
-            elif source_type == "CLI":
-                # CLI has model and optional argv
-                params.append("model-based")
-            elif source_type == "DotEnv":
-                # DotEnv has path
-                if hasattr(source, "_dotenv_path"):
-                    params.append(f"path={source._dotenv_path}")
-                if hasattr(source, "_model") and source._model:
-                    params.append("model-based")
-            elif source_type == "Etcd":
-                # Etcd has host, port, prefix, watch
-                if hasattr(source, "_host"):
-                    params.append(f"host={source._host}")
-                if hasattr(source, "_port"):
-                    params.append(f"port={source._port}")
-                if hasattr(source, "_prefix"):
-                    params.append(f"prefix={source._prefix}")
-                if hasattr(source, "_watch"):
-                    params.append(f"watch={source._watch}")
-            elif source_type == "_DefaultsSource":
-                params.append("from model")
-
-            return ", ".join(params) if params else "N/A"
-        except Exception:
-            return "N/A"
 
     def _measure_source_load_time(self, source: Source) -> float:
         """Measure source load time in milliseconds.
