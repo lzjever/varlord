@@ -61,8 +61,8 @@ Then set up the development environment:
 # Install package with all development dependencies (recommended)
 make dev-install
 
-# Or manually with uv
-uv sync --all-extras --dev
+# Or manually with uv (dev group is installed by default)
+uv sync --group docs --all-extras
 ```
 
 **Alternative: Dependencies only (for CI/CD or code review)**
@@ -75,6 +75,11 @@ make setup-venv
 # Later, if you need to install the package:
 make install
 ```
+
+**Understanding dependency groups vs extras:**
+
+- **Dependency groups** (`dev`, `docs`): Development dependencies that are not published to PyPI. The `dev` group is installed by default with `uv sync`.
+- **Extras** (`dotenv`, `etcd`): Optional runtime features that are published to PyPI.
 
 All `make` commands will automatically use `uv` if available, otherwise fall back to `pip`.
 

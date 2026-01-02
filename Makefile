@@ -1,4 +1,4 @@
-.PHONY: help clean install dev-install test test-cov test-etcd test-integration test-etcd-connection lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package
+.PHONY: help clean install dev-install test test-cov test-etcd test-dotenv test-integration lint format format-check check build sdist wheel docs html clean-docs upload upload-test check-package
 
 # Use uv if available, otherwise fall back to pip
 UV := $(shell command -v uv 2>/dev/null)
@@ -8,7 +8,8 @@ ifeq ($(UV),)
 else
 	PIP_CMD = uv pip
 	PYTHON_CMD = uv run python
-	UV_SYNC = uv sync --all-extras --dev
+	# dev group is installed by default with uv sync
+	UV_SYNC = uv sync --group docs --all-extras
 endif
 
 help:
@@ -24,8 +25,8 @@ help:
 	@echo "  test              - Run all unit tests (excludes integration tests)"
 	@echo "  test-cov          - Run tests with coverage report"
 	@echo "  test-integration  - Run all integration tests (requires external services)"
-	@echo "  test-etcd         - Run etcd integration tests (requires etcd server)"
-	@echo "  test-etcd-connection - Test etcd connection (requires etcd server)"
+	@echo "  test-etcd         - Run etcd integration tests (includes connection test)"
+	@echo "  test-dotenv       - Run dotenv integration tests (requires python-dotenv)"
 	@echo ""
 	@echo "Code Quality:"
 	@echo "  lint          - Run linting checks (flake8)"
@@ -64,7 +65,7 @@ setup-venv:
 	@echo "Setting up virtual environment and installing dependencies (without installing package)..."
 	@echo "This is useful for CI/CD, code review, or when you only need development tools."
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras --dev --no-install-project; \
+		uv sync --group docs --all-extras --no-install-project; \
 		echo "✅ Virtual environment created and dependencies installed!"; \
 		echo "   To install the package later, run: make install"; \
 		echo "   Note: Some tests may fail without the package installed."; \
@@ -75,7 +76,7 @@ setup-venv:
 
 install:
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras; \
+		uv sync; \
 	else \
 		$(PIP_CMD) install -e .; \
 	fi
@@ -83,7 +84,7 @@ install:
 dev-install:
 	@echo "Installing package with all development dependencies..."
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras --dev; \
+		uv sync --group docs --all-extras; \
 	else \
 		$(PIP_CMD) install -e ".[dev]"; \
 	fi
@@ -102,11 +103,20 @@ test-integration:
 test-etcd:
 	@echo "Running etcd integration tests..."
 	@echo "Make sure etcd is running and ETCD_HOST, ETCD_PORT, etc. are set"
-	$(PYTHON_CMD) -m pytest tests/test_sources_etcd_integration.py -v -m etcd
+	@echo ""
+	@echo "Step 1: Testing etcd connection..."
+	@if $(PYTHON_CMD) tests/test_etcd_connection.py; then \
+		echo "✅ etcd connection test passed"; \
+	else \
+		echo "⚠️  etcd connection test failed, but continuing with integration tests..."; \
+	fi
+	@echo ""
+	@echo "Step 2: Running etcd integration tests..."
+	$(PYTHON_CMD) -m pytest tests/test_sources_etcd_integration.py tests/test_etcd_watch_integration.py -v -m etcd
 
-test-etcd-connection:
-	@echo "Testing etcd connection..."
-	$(PYTHON_CMD) tests/test_etcd_connection.py
+test-dotenv:
+	@echo "Running dotenv integration tests..."
+	$(PYTHON_CMD) -m pytest tests/ -v -m "integration and requires_dotenv"
 
 lint:
 	$(PYTHON_CMD) -m flake8 varlord/ tests/ examples/ --max-line-length=100 --extend-ignore=E203,W503,E501
@@ -122,19 +132,19 @@ check: lint format-check test
 
 build: clean
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras --dev; \
+		uv sync --group docs --all-extras; \
 	fi
 	$(PYTHON_CMD) -m build
 
 sdist: clean
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras --dev; \
+		uv sync --group docs --all-extras; \
 	fi
 	$(PYTHON_CMD) -m build --sdist
 
 wheel: clean
 	@if [ -n "$(UV)" ]; then \
-		uv sync --all-extras --dev; \
+		uv sync --group docs --all-extras; \
 	fi
 	$(PYTHON_CMD) -m build --wheel
 

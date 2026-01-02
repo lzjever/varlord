@@ -45,11 +45,11 @@ make install
 **Option 2: Setup and install package (for development)**
 
 ```bash
-# Install all dependencies (including dev and docs) AND install the package
+# Install all dependencies (including dev and docs groups) AND install the package
 make dev-install
 
-# Or manually
-uv sync --all-extras --dev
+# Or manually (dev group is installed by default)
+uv sync --group docs --all-extras
 ```
 
 This will:
@@ -82,8 +82,14 @@ uv run python script.py
 # Add a new dependency
 uv add package-name
 
-# Add a dev dependency
-uv add --dev package-name
+# Add a dev dependency (to dev group)
+uv add --group dev package-name
+
+# Add a dependency to docs group
+uv add --group docs package-name
+
+# Add an optional runtime dependency (extra)
+uv add --optional etcd package-name
 
 # Remove a dependency
 uv remove package-name
@@ -92,12 +98,45 @@ uv remove package-name
 uv sync --upgrade
 ```
 
+## Understanding Dependency Groups vs Extras
+
+This project uses two types of optional dependencies:
+
+### Dependency Groups (PEP 735)
+- **`dev`**: Development dependencies (pytest, black, flake8, etc.) - **installed by default** with `uv sync`
+- **`docs`**: Documentation dependencies (sphinx, themes, etc.) - install with `--group docs`
+
+Dependency groups are **not published to PyPI** and are only for local development.
+
+### Extras (Optional Runtime Features)
+- **`dotenv`**: Support for `.env` files - install with `--extra dotenv` or `--all-extras`
+- **`etcd`**: Support for etcd configuration source - install with `--extra etcd` or `--all-extras`
+
+Extras are **published to PyPI** and can be installed by end users.
+
+### Common Commands
+
+```bash
+# Install with dev group (default) + all extras
+uv sync --all-extras
+
+# Install with dev + docs groups + all extras
+uv sync --group docs --all-extras
+
+# Install only runtime dependencies (no groups, no extras)
+uv sync
+
+# Install with specific extra
+uv sync --extra etcd
+```
+
 ## How It Works
 
 1. **Virtual Environment**: uv automatically creates and manages `.venv/` in your project root
 2. **Lock File**: `uv.lock` ensures reproducible builds across different machines
 3. **Fast**: uv is 10-100x faster than pip for dependency resolution
 4. **Compatible**: Works with existing `pyproject.toml` and `setup.py` projects
+5. **Project-Based**: Uses `uv.lock` for reproducible builds (like Poetry/PDM)
 
 ## Makefile Integration
 
@@ -160,7 +199,7 @@ export PATH="$HOME/.local/bin:$PATH"
 Clear and recreate:
 ```bash
 rm -rf .venv
-uv sync --all-extras --dev
+uv sync --group docs --all-extras
 ```
 
 ### Lock file conflicts
@@ -168,7 +207,8 @@ uv sync --all-extras --dev
 Regenerate the lock file:
 ```bash
 rm uv.lock
-uv sync --all-extras --dev
+uv lock
+uv sync --group docs --all-extras
 ```
 
 ## More Information

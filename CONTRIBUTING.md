@@ -97,7 +97,12 @@ make test-integration
 
 ### Run etcd tests (requires etcd server):
 ```bash
-make test-etcd
+make test-etcd  # Includes connection test and all integration tests
+```
+
+### Run dotenv tests (requires python-dotenv):
+```bash
+make test-dotenv
 ```
 
 ## Documentation

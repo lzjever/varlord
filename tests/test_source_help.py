@@ -2,6 +2,7 @@
 Tests for source help formatting.
 """
 
+import pytest
 from dataclasses import dataclass, field
 from varlord import sources
 from varlord.source_help import (
@@ -78,8 +79,17 @@ def test_format_source_help_with_cli():
     assert "api-key" in help_text.lower() or "api_key" in help_text.lower()
 
 
+@pytest.mark.requires_dotenv
+@pytest.mark.integration
 def test_format_source_help_with_dotenv():
     """Test source help formatting with DotEnv source."""
+    try:
+        from varlord.sources.dotenv import DotEnv
+
+        # Try to create instance to check if dotenv is available
+        _ = DotEnv(".env", model=None)
+    except ImportError:
+        pytest.skip("python-dotenv not installed")
 
     @dataclass
     class Config:

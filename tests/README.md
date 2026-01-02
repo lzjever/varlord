@@ -8,7 +8,8 @@ The test suite is organized into several categories:
 
 - **Unit Tests**: Fast, isolated tests that don't require external services
 - **Integration Tests**: Tests that require external services (marked with `@pytest.mark.integration`)
-- **Etcd Tests**: Tests that require a running etcd instance (marked with `@pytest.mark.etcd`)
+  - **Etcd Tests**: Tests that require a running etcd instance (marked with `@pytest.mark.etcd`)
+  - **Dotenv Tests**: Tests that require python-dotenv package (marked with `@pytest.mark.requires_dotenv`)
 
 ## Running Tests
 
@@ -36,6 +37,16 @@ pytest tests/ -v -m integration
 make test-etcd
 # or
 pytest tests/ -v -m etcd
+```
+
+**Note**: `make test-etcd` automatically runs the connection test first, then runs all etcd integration tests.
+
+### Run Only Dotenv Tests
+
+```bash
+make test-dotenv
+# or
+pytest tests/ -v -m "integration and requires_dotenv"
 ```
 
 ### Run Tests with Coverage
@@ -91,11 +102,9 @@ export ETCD_CERT_CERT=./cert/etcd-client-lzj-local/cert.pem
 
 ### Testing Connection
 
-Before running the full test suite, verify your connection works:
+The `make test-etcd` command automatically runs the connection test first. You can also run it manually:
 
 ```bash
-make test-etcd-connection
-# or
 python tests/test_etcd_connection.py
 ```
 
@@ -106,17 +115,23 @@ This script will:
 
 ### Running Etcd Tests
 
-#### Run all etcd integration tests:
+#### Run all etcd integration tests (includes connection test):
 
 ```bash
 make test-etcd
-# or
-pytest tests/test_sources_etcd_integration.py -v -m etcd
 ```
 
-#### Run etcd watch tests:
+This command:
+1. First runs the connection test (`test_etcd_connection.py`)
+2. Then runs all etcd integration tests:
+   - `test_sources_etcd_integration.py` (21 tests)
+   - `test_etcd_watch_integration.py` (14 tests)
+
+#### Run etcd tests manually:
 
 ```bash
+# Run specific test file
+pytest tests/test_sources_etcd_integration.py -v -m etcd
 pytest tests/test_etcd_watch_integration.py -v -m etcd
 ```
 
@@ -187,7 +202,8 @@ The etcd integration tests cover:
 
 - `test_sources_etcd_integration.py` - Etcd source integration tests (21 tests)
 - `test_etcd_watch_integration.py` - Etcd watch and dynamic updates tests (14 tests)
-- `test_etcd_connection.py` - Etcd connection verification script
+- `test_etcd_connection.py` - Etcd connection verification script (used by `make test-etcd`)
+- `test_sources_dotenv.py` - Dotenv source integration tests
 - `test_integration.py` - General integration tests
 
 ### Tutorial Examples
@@ -200,6 +216,8 @@ Tests are marked using pytest markers:
 
 - `@pytest.mark.integration` - Integration tests requiring external services
 - `@pytest.mark.etcd` - Tests requiring etcd
+- `@pytest.mark.requires_etcd` - Tests requiring etcd3 package
+- `@pytest.mark.requires_dotenv` - Tests requiring python-dotenv package
 - `@pytest.mark.slow` - Slow-running tests
 
 By default, integration tests are excluded. To run them:
@@ -207,6 +225,8 @@ By default, integration tests are excluded. To run them:
 ```bash
 pytest -m integration
 ```
+
+Tests requiring optional dependencies are automatically deselected if the dependencies are not installed (see `conftest.py` for details).
 
 ## Continuous Integration
 
@@ -265,6 +285,7 @@ import pytest
 
 @pytest.mark.etcd
 @pytest.mark.integration
+@pytest.mark.requires_etcd
 def test_etcd_source(etcd_client, etcd_cleanup):
     """Test etcd source functionality."""
     prefix = "/test/"
@@ -279,6 +300,25 @@ def test_etcd_source(etcd_client, etcd_cleanup):
     
     # Assert
     assert result["host"] == "example.com"
+```
+
+### Dotenv Test Example
+
+```python
+import pytest
+
+@pytest.mark.requires_dotenv
+@pytest.mark.integration
+def test_dotenv_source():
+    """Test dotenv source functionality."""
+    from varlord.sources.dotenv import DotEnv
+    
+    # Test
+    source = DotEnv(".env", model=MyConfig)
+    result = source.load()
+    
+    # Assert
+    assert "host" in result
 ```
 
 ## Troubleshooting
@@ -307,7 +347,7 @@ uv sync --all-extras --dev
 
 3. Test connection manually:
    ```bash
-   make test-etcd-connection
+   make test-etcd  # Includes connection test
    ```
 
 ### Tests Timeout
@@ -321,9 +361,18 @@ pytest tests/ --timeout=30
 ## Test Statistics
 
 - **Total Tests**: 271+ tests
-- **Unit Tests**: ~236 tests
+- **Unit Tests**: ~236 tests (no external dependencies)
 - **Integration Tests**: ~35 tests (excluded by default)
-- **Etcd Tests**: 35 tests (21 integration + 14 watch)
+  - **Etcd Tests**: 35 tests (21 integration + 14 watch)
+  - **Dotenv Tests**: Included in integration tests
 
 All tests should pass before submitting a pull request.
+
+## Available Make Targets
+
+- `make test` - Run all unit tests (excludes integration tests, no external deps)
+- `make test-cov` - Run tests with coverage report
+- `make test-integration` - Run all integration tests (requires optional deps)
+- `make test-etcd` - Run etcd integration tests (includes connection test)
+- `make test-dotenv` - Run dotenv integration tests
 

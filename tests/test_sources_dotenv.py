@@ -6,7 +6,15 @@ import pytest
 import tempfile
 import os
 from dataclasses import dataclass, field
-from varlord.sources.dotenv import DotEnv
+
+# Mark all tests in this file as requiring dotenv
+# Tests will be automatically deselected if python-dotenv is not installed (via conftest.py)
+try:
+    from varlord.sources.dotenv import DotEnv
+except ImportError:
+    DotEnv = None  # type: ignore
+
+pytestmark = [pytest.mark.requires_dotenv, pytest.mark.integration]
 
 
 @dataclass
@@ -22,6 +30,9 @@ class DotEnvTestConfig:
 
 def test_dotenv_basic():
     """Test basic DotEnv loading."""
+    # DotEnv availability is checked by conftest.py, but we need runtime check here
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=0.0.0.0\n")
         f.write("PORT=9000\n")
@@ -39,6 +50,8 @@ def test_dotenv_basic():
 
 def test_dotenv_model_filtering():
     """Test that DotEnv only loads model fields."""
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=0.0.0.0\n")
         f.write("UNRELATED_VAR=value\n")
@@ -74,6 +87,8 @@ def test_dotenv_nested_keys():
         env_file = f.name
 
     try:
+        if DotEnv is None:
+            pytest.skip("python-dotenv not installed")
         source = DotEnv(dotenv_path=env_file, model=AppConfig)
         config = source.load()
 
@@ -85,6 +100,8 @@ def test_dotenv_nested_keys():
 
 def test_dotenv_name():
     """Test source name."""
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=0.0.0.0\n")
         env_file = f.name
@@ -98,6 +115,8 @@ def test_dotenv_name():
 
 def test_dotenv_no_model_error():
     """Test that DotEnv raises error without model."""
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=0.0.0.0\n")
         env_file = f.name
@@ -115,6 +134,8 @@ def test_dotenv_no_model_error():
 
 def test_dotenv_missing_file():
     """Test DotEnv with missing file."""
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     source = DotEnv(dotenv_path="/nonexistent/file.env", model=DotEnvTestConfig)
     config = source.load()
 
@@ -124,6 +145,8 @@ def test_dotenv_missing_file():
 
 def test_dotenv_empty_file():
     """Test DotEnv with empty file."""
+    if DotEnv is None:
+        pytest.skip("python-dotenv not installed")
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         env_file = f.name
 

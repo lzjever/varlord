@@ -184,6 +184,8 @@ class TestCheckVariablesWithDifferentSources:
         assert "cli" in output
         assert "<CLI" in output or "CLI" in output
 
+    @pytest.mark.requires_dotenv
+    @pytest.mark.integration
     def test_with_dotenv_source(self):
         """Test check-variables output with DotEnv source."""
         try:
@@ -201,6 +203,8 @@ class TestCheckVariablesWithDifferentSources:
         except ImportError:
             pytest.skip("python-dotenv not installed")
 
+    @pytest.mark.requires_etcd
+    @pytest.mark.integration
     def test_with_etcd_source(self):
         """Test check-variables output with Etcd source."""
         try:
@@ -644,6 +648,8 @@ class TestSourceStringRepresentations:
         assert "CLI" in source_str
         assert isinstance(source_str, str)
 
+    @pytest.mark.requires_dotenv
+    @pytest.mark.integration
     def test_dotenv_source_str(self):
         """Test DotEnv source string representation."""
         try:
@@ -665,6 +671,8 @@ class TestSourceStringRepresentations:
         assert "SampleConfig" in source_str or "model" in source_str.lower()
         assert isinstance(source_str, str)
 
+    @pytest.mark.requires_etcd
+    @pytest.mark.integration
     def test_etcd_source_str(self):
         """Test Etcd source string representation."""
         try:

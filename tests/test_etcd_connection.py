@@ -26,8 +26,11 @@ sys.path.insert(0, str(project_root))
 try:
     import etcd3
 except ImportError:
-    print("ERROR: etcd3 is not installed. Install it with: pip install varlord[etcd]")
-    sys.exit(1)
+    etcd3 = None
+    # This is a standalone script, not a pytest test file
+    # It will handle the error in check_etcd_connection()
+    # Don't exit here - this file may be imported by pytest
+    # The check_etcd_connection function will handle the error
 
 # Configuration (can be overridden via environment variables)
 ETCD_HOST = os.environ.get("ETCD_HOST", "127.0.0.1")

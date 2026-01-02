@@ -27,15 +27,14 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3.etcdrpc.*")
 
-# Skip all tests in this file if etcd3 is not installed
+# Mark all tests in this file as etcd integration tests
+# Tests will be automatically deselected if etcd3 is not installed (via conftest.py)
 try:
     import etcd3
 except ImportError:
     etcd3 = None
-    pytestmark = pytest.mark.skip(reason="etcd3 not installed")
-else:
-    # Mark all tests in this file as etcd integration tests
-    pytestmark = [pytest.mark.etcd, pytest.mark.integration]
+
+pytestmark = [pytest.mark.etcd, pytest.mark.integration, pytest.mark.requires_etcd]
 
 
 # Etcd connection configuration
