@@ -2,8 +2,6 @@
 Tests for Resolver class.
 """
 
-import pytest
-from dataclasses import dataclass
 from varlord.resolver import Resolver
 from varlord.policy import PriorityPolicy
 from varlord.sources.base import Source
@@ -48,25 +46,6 @@ def test_resolver_priority():
 
     # source2 is later, so it should override source1
     assert result["key"] == "value2"
-
-
-def test_resolver_priority_policy():
-    """Test resolver with PriorityPolicy."""
-    source1 = MockSource("source1", {"key1": "value1", "key2": "value2"})
-    source2 = MockSource("source2", {"key1": "value1_override", "key2": "value2_override"})
-
-    policy = PriorityPolicy(
-        default=["source1", "source2"],
-        overrides={
-            "key2": ["source1"],  # key2 should only use source1
-        },
-    )
-
-    resolver = Resolver(sources=[source1, source2], policy=policy)
-    result = resolver.resolve()
-
-    assert result["key1"] == "value1_override"  # source2 overrides
-    assert result["key2"] == "value2"  # Only source1 (per policy)
 
 
 def test_resolver_priority_policy():

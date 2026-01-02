@@ -42,6 +42,7 @@ class Config:
         model: Type[Any],
         sources: List[Source],
         policy: Optional[PriorityPolicy] = None,
+        show_source_help: bool = True,
     ):
         """Initialize Config.
 
@@ -50,38 +51,43 @@ class Config:
             sources: List of configuration sources (order determines priority:
                     later sources override earlier ones)
             policy: Optional PriorityPolicy for per-key priority rules
+            show_source_help: Whether to show source mapping help in errors (default: True)
+
+        Raises:
+            ModelDefinitionError: If any field is missing required/optional metadata
 
         Note:
             - Priority is determined by sources order: later sources override earlier ones
             - Use PriorityPolicy only when you need per-key priority rules
-            - Defaults source should typically be included and placed first
-            - Model is automatically injected to CLI source if not provided
-            - Validation should be done in model's __post_init__ method
+            - Model defaults are automatically applied as base layer (no need for Defaults source)
+            - Model is automatically injected to all sources
+            - All fields MUST have explicit required/optional metadata
         """
         self._model = model
         self._sources = sources
         self._policy = policy
+        self._show_source_help = show_source_help
+
+        # Validate model definition first
+        from varlord.model_validation import validate_model_definition
+
+        validate_model_definition(model)
 
         # Auto-inject model to sources that need it
         self._inject_model_to_sources()
 
-        # Create resolver (no priority parameter - use sources order)
-        self._resolver = Resolver(sources=sources, policy=policy)
+        # Note: Resolver will be created in load() with defaults source included
 
     def _inject_model_to_sources(self) -> None:
         """Automatically inject model to sources that need it."""
-        from varlord.sources.cli import CLI
-
         for source in self._sources:
-            # Inject model to CLI if not provided
-            if isinstance(source, CLI) and source._model is None:
+            if not hasattr(source, "_model") or source._model is None:
                 source._model = self._model
 
     @classmethod
     def from_model(
         cls,
         model: Type[Any],
-        env_prefix: Optional[str] = None,
         cli: bool = True,
         dotenv: Optional[str] = ".env",
         etcd: Optional[dict] = None,
@@ -91,7 +97,6 @@ class Config:
 
         Args:
             model: Dataclass model for configuration
-            env_prefix: Prefix for environment variables (e.g., ``"APP_"``)
             cli: Whether to include CLI source
             dotenv: Path to .env file (None to disable)
             etcd: Etcd configuration dict with keys: host, port, prefix, watch
@@ -101,34 +106,33 @@ class Config:
             Config instance
 
         Note:
-            Source priority order: Defaults < DotEnv < Env < Etcd < CLI
-            (later sources override earlier ones)
+            - Model defaults are automatically applied as base layer
+            - Source priority order: Defaults (auto) < DotEnv < Env < Etcd < CLI
+            - All sources are filtered by model fields
+            - All fields MUST have explicit required/optional metadata
 
         Example:
-            >>> from dataclasses import dataclass
+            >>> from dataclasses import dataclass, field
             >>> @dataclass
             ... class AppConfig:
-            ...     host: str = "127.0.0.1"
-            ...     port: int = 8000
+            ...     host: str = field(default="127.0.0.1", metadata={"optional": True})
+            ...     port: int = field(default=8000, metadata={"optional": True})
             >>> cfg = Config.from_model(
             ...     AppConfig,
-            ...     env_prefix="APP_",
             ...     cli=True,
             ...     dotenv=".env",
             ... )
         """
         from varlord import sources
 
-        source_list: List[Source] = [
-            sources.Defaults(model=model),
-        ]
+        source_list: List[Source] = []
 
-        if env_prefix:
-            source_list.append(sources.Env(prefix=env_prefix))
+        # Env source (no prefix needed - filtered by model)
+        source_list.append(sources.Env(model=model))
 
         if dotenv:
             try:
-                source_list.append(sources.DotEnv(dotenv))
+                source_list.append(sources.DotEnv(dotenv_path=dotenv, model=model))
             except ImportError:
                 pass  # dotenv not installed
 
@@ -140,6 +144,7 @@ class Config:
                         port=etcd.get("port", 2379),
                         prefix=etcd.get("prefix", "/"),
                         watch=etcd.get("watch", False),
+                        model=model,
                     )
                 )
             except ImportError:
@@ -150,17 +155,115 @@ class Config:
 
         return cls(model=model, sources=source_list, policy=policy)
 
-    def load(self) -> Any:
-        """Load configuration once (static).
+    def _extract_model_defaults(self) -> dict[str, Any]:
+        """Extract default values from model (recursive, returns flat dict).
+
+        Returns:
+            Flat dictionary with normalized keys (e.g., {"host": "localhost", "db.host": "127.0.0.1"})
+        """
+        from varlord.metadata import get_all_fields_info
+
+        defaults = {}
+        field_infos = get_all_fields_info(self._model)
+
+        for field_info in field_infos:
+            normalized_key = field_info.normalized_key
+
+            # Check for default value
+            if field_info.default is not ...:
+                defaults[normalized_key] = field_info.default
+            # Check for default_factory
+            elif field_info.default_factory is not ...:
+                try:
+                    defaults[normalized_key] = field_info.default_factory()
+                except Exception:
+                    pass  # Skip if factory fails
+
+        return defaults
+
+    def _create_defaults_source(self) -> Source:
+        """Create an internal Defaults source from model defaults.
+
+        Returns:
+            A Source instance that returns model defaults.
+        """
+        from varlord.sources.defaults import Defaults
+
+        # Create Defaults source with precomputed defaults
+        defaults_source = Defaults(model=self._model)
+        # Precompute defaults to avoid repeated extraction
+        defaults_source._precomputed_defaults = self._extract_model_defaults()
+        return defaults_source
+
+    def _load_config_dict(self, validate: bool = False) -> dict[str, Any]:
+        """Load and merge configuration from all sources.
+
+        Args:
+            validate: Whether to validate required fields
+
+        Returns:
+            Merged configuration dictionary
+
+        Raises:
+            RequiredFieldError: If required fields are missing and validate=True
+        """
+        # Step 1: Create defaults source (internal, not in user's sources list)
+        defaults_source = self._create_defaults_source()
+
+        # Step 2: Combine defaults + user sources
+        all_sources = [defaults_source] + self._sources
+
+        # Step 3: Create resolver with all sources
+        resolver = Resolver(sources=all_sources, policy=self._policy)
+
+        # Step 4: Resolve (merge all sources)
+        config_dict = resolver.resolve()
+
+        # Step 5: Validate (if enabled)
+        if validate:
+            self.validate(config_dict)
+
+        return config_dict
+
+    def validate(self, config_dict: Optional[dict[str, Any]] = None) -> None:
+        """Validate configuration.
+
+        Args:
+            config_dict: Optional configuration dict to validate.
+                        If None, loads and validates current configuration.
+
+        Raises:
+            RequiredFieldError: If required fields are missing.
+        """
+        if config_dict is None:
+            # Load configuration first (without validation)
+            config_dict = self._load_config_dict(validate=False)
+
+        # Validate
+        from varlord.model_validation import validate_config
+
+        validate_config(self._model, config_dict, self._sources, self._show_source_help)
+
+    def load(self, validate: bool = True) -> Any:
+        """Load configuration with automatic defaults and optional validation.
+
+        Args:
+            validate: Whether to validate required fields (default: True)
 
         Returns:
             Model instance with configuration loaded from all sources.
+
+        Raises:
+            RequiredFieldError: If required fields are missing and validate=True.
 
         Note:
             This method loads configuration once. For dynamic updates,
             use load_store() instead.
         """
-        config_dict = self._resolver.resolve()
+        # Load and merge configuration
+        config_dict = self._load_config_dict(validate=validate)
+
+        # Convert to model instance
         return self._dict_to_model(config_dict)
 
     def load_store(self) -> ConfigStore:
@@ -170,11 +273,21 @@ class Config:
 
         Returns:
             ConfigStore instance for runtime configuration management.
+
+        Note:
+            ConfigStore will use the same defaults + sources logic.
         """
-        return ConfigStore(
-            resolver=self._resolver,
-            model=self._model,
-        )
+        # Create defaults source
+        defaults_source = self._create_defaults_source()
+
+        # Combine all sources
+        all_sources = [defaults_source] + self._sources
+
+        # Create resolver
+        resolver = Resolver(sources=all_sources, policy=self._policy)
+
+        # Create and return ConfigStore
+        return ConfigStore(resolver=resolver, model=self._model)
 
     def _dict_to_model(self, config_dict: dict[str, Any]) -> Any:
         """Convert dictionary to model instance.
@@ -188,8 +301,7 @@ class Config:
         Returns:
             Model instance
         """
-        from dataclasses import fields, is_dataclass
-        from varlord.converters import convert_value
+        from dataclasses import is_dataclass
 
         if not is_dataclass(self._model):
             raise TypeError(f"Model must be a dataclass, got {type(self._model)}")

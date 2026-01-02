@@ -6,7 +6,7 @@ per-key priority rules.
 """
 
 from __future__ import annotations
-from typing import List, Dict, Optional, Pattern
+from typing import List, Dict, Optional
 import re
 from dataclasses import dataclass
 

@@ -77,7 +77,7 @@ def log_type_conversion(key: str, value: Any, target_type: type, result: Any) ->
     """
     logger = get_logger()
     if logger.isEnabledFor(logging.DEBUG):
-        if value != result or type(value) != type(result):
+        if value != result or type(value) is not type(result):
             logger.debug(
                 f"Converted '{key}': {value!r} ({type(value).__name__}) -> "
                 f"{result!r} ({type(result).__name__})"

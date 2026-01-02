@@ -21,22 +21,21 @@ First, let's create a simple configuration model for a web application:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
-       app_name: str = "MyApp"
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
+       app_name: str = field(default="MyApp", metadata={"optional": True})
 
    # Create configuration
+   # Model defaults are automatically applied - no need for sources.Defaults
    cfg = Config(
        model=AppConfig,
-       sources=[
-           sources.Defaults(model=AppConfig),
-       ],
+       sources=[],  # No sources needed - defaults are automatic
    )
 
    # Load configuration
@@ -57,7 +56,8 @@ First, let's create a simple configuration model for a web application:
 
 - Use ``@dataclass(frozen=True)`` to create immutable configuration objects
 - Provide default values for all fields
-- ``sources.Defaults`` loads values from the dataclass defaults
+- **All fields must explicitly specify** ``metadata={"required": True}`` or ``metadata={"optional": True}``
+- Model defaults are automatically applied - no need for ``sources.Defaults``
 - ``cfg.load()`` returns an instance of your configuration model
 
 Step 2: Access Configuration Values
@@ -96,22 +96,20 @@ Here's a complete working example:
    :name: getting_started_complete
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
-       app_name: str = "MyApp"
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
+       app_name: str = field(default="MyApp", metadata={"optional": True})
 
    def main():
        cfg = Config(
            model=AppConfig,
-           sources=[
-               sources.Defaults(model=AppConfig),
-           ],
+           sources=[],  # Defaults are automatically applied
        )
 
        app = cfg.load()
@@ -153,14 +151,14 @@ Common Pitfalls
 **Solution**: Always provide default values for all fields, or use ``Optional``
 for fields that may not be set.
 
-**Pitfall 2: Not using frozen dataclasses**
+**Pitfall 3: Not using frozen dataclasses**
 
 .. code-block:: python
    :emphasize-lines: 1
 
    @dataclass  # Missing frozen=True
    class AppConfig:
-       host: str = "127.0.0.1"
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
 
    app = cfg.load()
    app.host = "0.0.0.0"  # This works, but breaks immutability!
@@ -168,27 +166,15 @@ for fields that may not be set.
 **Solution**: Always use ``@dataclass(frozen=True)`` to ensure configuration
 immutability.
 
-**Pitfall 3: Forgetting to pass model to Defaults source**
-
-.. code-block:: python
-   :emphasize-lines: 5
-
-   cfg = Config(
-       model=AppConfig,
-       sources=[
-           sources.Defaults(),  # Missing model parameter!
-       ],
-   )
-
-**Solution**: Always pass ``model=AppConfig`` to ``sources.Defaults()``.
-
 Best Practices
 --------------
 
 1. **Use descriptive field names**: Choose clear, self-documenting names
-2. **Provide sensible defaults**: Defaults should work for development
-3. **Use appropriate types**: Use ``int``, ``str``, ``bool``, etc. correctly
-4. **Keep it simple**: Start with defaults, add complexity as needed
+2. **Explicitly mark fields as required or optional**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
+3. **Provide sensible defaults**: Defaults should work for development
+4. **Use appropriate types**: Use ``int``, ``str``, ``bool``, etc. correctly
+5. **Add field descriptions**: Use ``metadata={"description": "..."}`` for better documentation
+6. **Keep it simple**: Start with defaults, add complexity as needed
 
 Next Steps
 ----------

@@ -9,10 +9,10 @@ from __future__ import annotations
 import threading
 import time
 from typing import Any, Callable, Dict, Optional, Type, Iterator
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, is_dataclass
 
 from varlord.resolver import Resolver
-from varlord.sources.base import Source, ChangeEvent
+from varlord.sources.base import ChangeEvent
 
 
 @dataclass
@@ -87,7 +87,6 @@ class ConfigStore:
                 diff = self._calculate_diff(self._config_dict, config_dict)
 
                 # Atomically replace
-                old_config = self._config
                 self._config = new_config
                 self._config_dict = config_dict
 
@@ -100,7 +99,7 @@ class ConfigStore:
                             # Don't let subscriber errors break the update
                             pass
 
-            except Exception as e:
+            except Exception:
                 # Fail-safe: keep old configuration on error
                 # In production, you might want to log this
                 if self._config is None:
@@ -119,8 +118,6 @@ class ConfigStore:
         Returns:
             Model instance
         """
-        from varlord.converters import convert_value
-
         if not is_dataclass(self._model):
             raise TypeError(f"Model must be a dataclass, got {type(self._model)}")
 
@@ -144,7 +141,7 @@ class ConfigStore:
         Returns:
             Nested dictionary matching the model structure
         """
-        from dataclasses import fields, is_dataclass, asdict
+        from dataclasses import asdict, fields
         from varlord.converters import convert_value
 
         field_info = {f.name: f for f in fields(model)}
@@ -311,7 +308,7 @@ class ConfigStore:
                                 except StopIteration:
                                     # Iterator exhausted, exit
                                     break
-                                except Exception as e:
+                                except Exception:
                                     # On error, try to reconnect after delay with backoff
                                     if not self._stop_event.is_set():
                                         time.sleep(backoff)

@@ -6,7 +6,6 @@ Handles merging configuration from multiple sources according to priority.
 
 from __future__ import annotations
 from typing import Mapping, Any, List, Dict, Optional
-from collections.abc import MutableMapping
 
 from varlord.sources.base import Source
 from varlord.policy import PriorityPolicy

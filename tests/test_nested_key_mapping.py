@@ -1,25 +1,20 @@
 """Tests for nested key mapping functionality."""
 
-import pytest
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from varlord import Config, sources
 
 
 @dataclass
 class DBConfig:
-    host: str = "localhost"
-    port: int = 5432
+    host: str = field(default="localhost", metadata={"optional": True})
+    port: int = field(default=5432, metadata={"optional": True})
 
 
 @dataclass
 class AppConfig:
-    host: str = "0.0.0.0"
-    port: int = 8000
-    db: DBConfig = None  # type: ignore
-
-    def __post_init__(self):
-        if self.db is None:
-            self.db = DBConfig()
+    host: str = field(default="0.0.0.0", metadata={"optional": True})
+    port: int = field(default=8000, metadata={"optional": True})
+    db: DBConfig = field(default_factory=DBConfig, metadata={"optional": True})
 
 
 def test_cli_nested_key_mapping():
@@ -34,7 +29,6 @@ def test_cli_nested_key_mapping():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
                 sources.CLI(model=AppConfig),
             ],
         )
@@ -55,8 +49,8 @@ def test_env_cli_override_nested():
 
     try:
         # Set environment variable
-        os.environ["APP_DB__HOST"] = "env-host"
-        os.environ["APP_DB__PORT"] = "8888"
+        os.environ["DB__HOST"] = "env-host"
+        os.environ["DB__PORT"] = "8888"
 
         # Set CLI argument (should override env)
         sys.argv = ["test", "--db-host", "cli-host"]
@@ -64,8 +58,7 @@ def test_env_cli_override_nested():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_"),
+                sources.Env(model=AppConfig),
                 sources.CLI(model=AppConfig),
             ],
         )
@@ -77,8 +70,8 @@ def test_env_cli_override_nested():
         assert app.db.port == 8888
     finally:
         sys.argv = original_argv
-        os.environ.pop("APP_DB__HOST", None)
-        os.environ.pop("APP_DB__PORT", None)
+        os.environ.pop("DB__HOST", None)
+        os.environ.pop("DB__PORT", None)
 
 
 def test_unified_key_format():
@@ -90,7 +83,7 @@ def test_unified_key_format():
 
     try:
         # Env: db.host
-        os.environ["APP_DB__HOST"] = "env-host"
+        os.environ["DB__HOST"] = "env-host"
 
         # CLI: db.host (should override)
         sys.argv = ["test", "--db-host", "cli-host"]
@@ -98,8 +91,7 @@ def test_unified_key_format():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_"),
+                sources.Env(model=AppConfig),
                 sources.CLI(model=AppConfig),
             ],
         )
@@ -109,7 +101,7 @@ def test_unified_key_format():
         assert app.db.host == "cli-host"  # CLI overrides Env
     finally:
         sys.argv = original_argv
-        os.environ.pop("APP_DB__HOST", None)
+        os.environ.pop("DB__HOST", None)
 
 
 def test_flat_key_still_works():
@@ -124,7 +116,6 @@ def test_flat_key_still_works():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
                 sources.CLI(model=AppConfig),
             ],
         )

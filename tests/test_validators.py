@@ -5,7 +5,6 @@ Comprehensive tests for validators.
 import pytest
 import tempfile
 import os
-from pathlib import Path
 from varlord.validators import (
     ValidationError,
     # Basic
@@ -45,7 +44,7 @@ from varlord.validators import (
     validate_directory_path,
     # Custom
     validate_custom,
-    validate_config,
+    apply_validators,
 )
 
 
@@ -484,8 +483,8 @@ def test_validate_custom():
         validate_custom(3, is_even, message="must be even")
 
 
-def test_validate_config():
-    """Test validate_config."""
+def test_apply_validators():
+    """Test apply_validators."""
     from dataclasses import dataclass
 
     @dataclass
@@ -497,7 +496,7 @@ def test_validate_config():
     config = TestConfig()
 
     # Valid config
-    validate_config(
+    apply_validators(
         config,
         {
             "port": [lambda v: validate_port(v)],
@@ -509,7 +508,7 @@ def test_validate_config():
     # Invalid config
     invalid_config = TestConfig(port=70000, email="invalid")
     with pytest.raises(ValidationError) as exc_info:
-        validate_config(
+        apply_validators(
             invalid_config,
             {
                 "port": [lambda v: validate_port(v)],

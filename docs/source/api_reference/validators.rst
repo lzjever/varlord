@@ -55,4 +55,4 @@ The validators are organized into the following categories:
 
 **Custom Validators**
    - :func:`validate_custom` - Validate using custom function
-   - :func:`validate_config` - Validate configuration object
+   - :func:`apply_validators` - Apply validators to configuration object

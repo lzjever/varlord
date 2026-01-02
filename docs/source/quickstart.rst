@@ -18,14 +18,14 @@ Basic Usage
 
 .. code-block:: python
 
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
 
 **Step 2: Create and load configuration**
 
@@ -34,8 +34,7 @@ Basic Usage
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Model defaults applied automatically
            sources.CLI(),  # Model auto-injected
        ],
    )
@@ -49,8 +48,7 @@ Basic Usage
 
    cfg = Config.from_model(
        AppConfig,
-       env_prefix="APP_",
-       cli=True,
+       cli=True,  # env_prefix removed - all env vars filtered by model
    )
 
    app = cfg.load()
@@ -65,8 +63,7 @@ Priority is determined by sources order (later sources override earlier ones):
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),  # Lowest priority
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Model defaults applied first, then env
            sources.CLI(),  # Highest priority (last)
        ],
    )
@@ -134,7 +131,6 @@ Use ConfigStore for dynamic configuration updates:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            sources.Etcd(..., watch=True),  # Enable watch here
        ],
    )

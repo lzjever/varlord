@@ -3,41 +3,39 @@ Tests for Config convenience methods.
 """
 
 import os
-import pytest
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from varlord import Config, sources
 
 
 @dataclass(frozen=True)
 class AppTestConfig:
-    host: str = "127.0.0.1"
-    port: int = 8000
-    debug: bool = False
+    host: str = field(default="127.0.0.1", metadata={"optional": True})
+    port: int = field(default=8000, metadata={"optional": True})
+    debug: bool = field(default=False, metadata={"optional": True})
 
 
-def test_auto_inject_model_to_cli():
-    """Test automatic model injection to CLI source."""
+def test_auto_inject_model_to_sources():
+    """Test automatic model injection to all sources."""
     cfg = Config(
         model=AppTestConfig,
         sources=[
-            sources.Defaults(model=AppTestConfig),
+            sources.Env(),  # Model should be auto-injected
             sources.CLI(),  # Model should be auto-injected
         ],
     )
 
-    # CLI source should have model
-    cli_source = next(s for s in cfg._sources if isinstance(s, sources.CLI))
-    assert cli_source._model == AppTestConfig
+    # All sources should have model
+    for source in cfg._sources:
+        assert source._model == AppTestConfig
 
 
 def test_from_model_convenience():
     """Test Config.from_model convenience method."""
-    os.environ["TEST_HOST"] = "0.0.0.0"
+    os.environ["HOST"] = "0.0.0.0"
 
     try:
         cfg = Config.from_model(
             AppTestConfig,
-            env_prefix="TEST_",
             cli=True,
             dotenv=None,  # Disable dotenv
         )
@@ -46,14 +44,13 @@ def test_from_model_convenience():
         assert app.host == "0.0.0.0"  # From env
         assert app.port == 8000  # From defaults
     finally:
-        os.environ.pop("TEST_HOST", None)
+        os.environ.pop("HOST", None)
 
 
 def test_from_model_without_cli():
     """Test Config.from_model without CLI."""
     cfg = Config.from_model(
         AppTestConfig,
-        env_prefix="",
         cli=False,
     )
 
@@ -64,17 +61,17 @@ def test_from_model_without_cli():
 
 def test_from_model_priority():
     """Test Config.from_model with sources order."""
-    os.environ["TEST_HOST"] = "env_value"
+    os.environ["HOST"] = "env_value"
 
     try:
-        # from_model creates sources in order: Defaults < Env < CLI
+        # from_model creates sources in order: Env < CLI
+        # Defaults are automatically applied first
         # So Env overrides Defaults
         cfg = Config.from_model(
             AppTestConfig,
-            env_prefix="TEST_",
         )
 
         app = cfg.load()
         assert app.host == "env_value"
     finally:
-        os.environ.pop("TEST_HOST", None)
+        os.environ.pop("HOST", None)

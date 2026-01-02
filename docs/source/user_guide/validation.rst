@@ -7,38 +7,49 @@ automatically called when the configuration is instantiated.
 
 **Important**: Validation happens **after all sources are merged**. This means:
 
-1. All configuration sources are loaded and merged first
-2. The merged configuration is converted to a model instance
-3. ``__post_init__`` is called, which performs validation
-4. If validation fails, the entire configuration load fails
+1. Model defaults are automatically applied first
+2. All configuration sources are loaded and merged
+3. The merged configuration is converted to a model instance
+4. Required field validation is performed (if enabled)
+5. ``__post_init__`` is called, which performs value validation
+6. If validation fails, the entire configuration load fails
 
 This ensures that validation works on the **final merged values**, not just defaults.
+
+**Required Field Validation**:
+
+All fields must explicitly specify ``metadata={"required": True}`` or ``metadata={"optional": True}``.
+Required fields are validated before ``__post_init__`` is called.
 
 Example:
 
 .. code-block:: python
 
+   from dataclasses import dataclass, field
+   from varlord import Config, sources
+   from varlord.validators import validate_length
+   from varlord.model_validation import RequiredFieldError
+
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = ""  # Default is empty
+       api_key: str = field(metadata={"required": True})  # Required - no default
 
-       def __post_init__(self):
-           validate_length(self.api_key, min_length=32)
+   # This will FAIL - api_key not provided
+   cfg = Config(model=AppConfig, sources=[])
+   try:
+       app = cfg.load()  # Raises RequiredFieldError
+   except RequiredFieldError as e:
+       print(f"Missing required fields: {e.missing_fields}")
 
-   # This will FAIL (only defaults, api_key is empty)
-   cfg = Config(model=AppConfig, sources=[sources.Defaults(model=AppConfig)])
-   app = cfg.load()  # Raises ValidationError
-
-   # This will SUCCEED (env provides valid api_key)
-   # Set: export APP_API_KEY="a" * 32
+   # This will SUCCEED (env provides api_key)
+   # Set: export API_KEY="a" * 32
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),
        ],
    )
-   app = cfg.load()  # OK - validation uses merged value from env
+   app = cfg.load()  # OK - required field provided
 
 Built-in Validators
 -------------------
@@ -355,13 +366,15 @@ Here's a complete example using multiple validators:
        validate_not_empty,
    )
 
+   from dataclasses import dataclass, field
+
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       admin_email: str = "admin@example.com"
-       api_url: str = "https://api.example.com"
-       api_key: str = ""
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
+       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
+       api_key: str = field(default="", metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -419,11 +432,13 @@ method. Validation is performed automatically when nested objects are created.
    from dataclasses import dataclass
    from varlord.validators import validate_range, validate_not_empty, validate_email, ValidationError
 
+   from dataclasses import dataclass, field
+
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       max_connections: int = 10
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       max_connections: int = field(default=10, metadata={"optional": True})
 
        def __post_init__(self):
            """Validate database configuration."""
@@ -433,9 +448,9 @@ method. Validation is performed automatically when nested objects are created.
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = None
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
        def __post_init__(self):
            """Validate application configuration."""
@@ -471,9 +486,15 @@ method. Validation is performed automatically when nested objects are created.
 Validation Errors
 -----------------
 
-Validation errors raise ``ValidationError`` with detailed information:
+Varlord provides several exception types for different validation scenarios:
+
+**Value Validation Errors** (from ``varlord.validators``):
+
+Value validation errors raise ``ValidationError`` with detailed information:
 
 .. code-block:: python
+
+   from varlord.validators import ValidationError
 
    try:
        app = cfg.load()
@@ -487,6 +508,16 @@ Validation errors raise ``ValidationError`` with detailed information:
 - ``e.key``: The configuration key that failed validation (e.g., ``"port"``, ``"db.host"``)
 - ``e.value``: The invalid value
 - ``e.message``: Human-readable error message
+
+**Model and Structure Validation Errors** (from ``varlord.model_validation``):
+
+- ``ModelDefinitionError``: Raised when a field is missing required/optional metadata
+- ``RequiredFieldError``: Raised when required fields are missing from configuration
+  - ``e.missing_fields``: List of missing field keys
+  - ``e.model_name``: Name of the model class
+  - Includes comprehensive source mapping help in error message
+
+For more details, see :doc:`API Reference <../api_reference/model_validation>`.
 
 Validator Reference
 -------------------

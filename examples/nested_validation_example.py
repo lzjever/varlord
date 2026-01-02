@@ -86,7 +86,7 @@ def main():
         )
 
         app = cfg.load()
-        print(f"Config loaded successfully:")
+        print("Config loaded successfully:")
         print(f"  Host: {app.host}:{app.port}")
         print(f"  DB: {app.db.host}:{app.db.port} (max_conn={app.db.max_connections})")
         print(f"  API: {app.api.base_url} (timeout={app.api.timeout}s, retries={app.api.retries})")

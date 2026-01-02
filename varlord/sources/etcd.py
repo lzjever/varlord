@@ -6,9 +6,8 @@ This is an optional source that requires the 'etcd' extra.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Optional, Iterator
+from typing import Mapping, Any, Optional, Iterator, Type
 import threading
-import time
 import warnings
 
 try:
@@ -45,6 +44,7 @@ class Etcd(Source):
         prefix: str = "/",
         watch: bool = False,
         timeout: Optional[int] = None,
+        model: Optional[Type[Any]] = None,
     ):
         """Initialize Etcd source.
 
@@ -54,10 +54,14 @@ class Etcd(Source):
             prefix: Key prefix to load (e.g., "/app/")
             watch: Whether to enable watch support
             timeout: Connection timeout in seconds
+            model: Model to filter etcd keys.
+                  Only keys that map to model fields will be loaded.
+                  Model is required and will be auto-injected by Config.
 
         Raises:
             ImportError: If etcd3 is not installed
         """
+        super().__init__(model=model)
         if etcd3 is None:
             raise ImportError(
                 "etcd3 is required for Etcd source. " "Install it with: pip install varlord[etcd]"
@@ -88,13 +92,25 @@ class Etcd(Source):
         return "etcd"
 
     def load(self) -> Mapping[str, Any]:
-        """Load configuration from etcd.
+        """Load configuration from etcd, filtered by model fields.
 
         Returns:
             A mapping of configuration keys to values.
             Keys are normalized (prefix removed, converted to dot notation).
+            Only includes keys that map to model fields.
+
+        Raises:
+            ValueError: If model is not provided
         """
+        if not self._model:
+            raise ValueError("Etcd source requires model (should be auto-injected by Config)")
+
         try:
+            from varlord.metadata import get_all_field_keys
+
+            # Get all valid field keys from model
+            valid_keys = get_all_field_keys(self._model)
+
             client = self._get_client()
             result: dict[str, Any] = {}
 
@@ -115,6 +131,10 @@ class Etcd(Source):
                 key_str = key_str.replace("/", "__")
                 # Apply unified normalization
                 normalized_key = normalize_key(key_str)
+
+                # Only load if it matches a model field
+                if normalized_key not in valid_keys:
+                    continue
 
                 # Decode value
                 if value:

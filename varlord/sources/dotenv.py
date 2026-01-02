@@ -2,11 +2,11 @@
 DotEnv source.
 
 Loads configuration from .env files using python-dotenv.
-This is an optional source that requires the 'dotenv' extra.
+Only loads variables that map to fields defined in the model.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Optional
+from typing import Mapping, Any, Optional, Type
 
 try:
     from dotenv import dotenv_values
@@ -14,6 +14,7 @@ except ImportError:
     dotenv_values = None  # type: ignore
 
 from varlord.sources.base import Source, normalize_key
+from varlord.metadata import get_all_field_keys
 
 
 class DotEnv(Source):
@@ -21,32 +22,38 @@ class DotEnv(Source):
 
     Requires the 'dotenv' extra: pip install varlord[dotenv]
 
-    Keys are normalized to lowercase for consistency with other sources.
-    Note: For nested keys and advanced normalization, use Env source with DotEnv.
+    Only loads variables that map to fields defined in the model.
+    Model is required and will be auto-injected by Config.
 
     Example:
-        >>> # .env file:
-        >>> # HOST=0.0.0.0
-        >>> # PORT=9000
-        >>> source = DotEnv(".env")
+        >>> @dataclass
+        ... class Config:
+        ...     api_key: str = field(metadata={"required": True})
+        >>> # .env file: API_KEY=value1 OTHER_VAR=ignored
+        >>> source = DotEnv(".env", model=Config)
         >>> source.load()
-        {'host': '0.0.0.0', 'port': '9000'}
-
-        >>> # For nested keys, use with Env source:
-        >>> # .env: APP_DB__HOST=localhost
-        >>> sources = [DotEnv(".env"), Env(prefix="APP_", separator="__")]
+        {'api_key': 'value1'}  # OTHER_VAR is ignored
     """
 
-    def __init__(self, dotenv_path: str = ".env", encoding: Optional[str] = None):
+    def __init__(
+        self,
+        dotenv_path: str = ".env",
+        model: Optional[Type[Any]] = None,
+        encoding: Optional[str] = None,
+    ):
         """Initialize DotEnv source.
 
         Args:
             dotenv_path: Path to .env file
+            model: Model to filter .env variables.
+                  Only variables that map to model fields will be loaded.
+                  Model is required and will be auto-injected by Config.
             encoding: File encoding (default: None, uses system default)
 
         Raises:
             ImportError: If python-dotenv is not installed
         """
+        super().__init__(model=model)
         if dotenv_values is None:
             raise ImportError(
                 "python-dotenv is required for DotEnv source. "
@@ -61,21 +68,33 @@ class DotEnv(Source):
         return "dotenv"
 
     def load(self) -> Mapping[str, Any]:
-        """Load configuration from .env file.
+        """Load configuration from .env file, filtered by model fields.
 
         Returns:
-            A mapping of normalized keys (lowercase, dot notation) to their values.
-            Keys are normalized to lowercase for consistency with other sources.
+            A mapping of normalized keys to their values.
+            Only includes variables that map to model fields.
+
+        Raises:
+            ValueError: If model is not provided
         """
+        if not self._model:
+            raise ValueError("DotEnv source requires model (should be auto-injected by Config)")
+
         if dotenv_values is None:
             return {}
+
+        # Load all variables from .env file
         raw_values = dotenv_values(self._dotenv_path, encoding=self._encoding) or {}
 
-        # Normalize keys using unified rules
+        # Get all valid field keys from model
+        valid_keys = get_all_field_keys(self._model)
+
+        # Filter by model fields
         result = {}
-        for key, value in raw_values.items():
-            normalized_key = normalize_key(key)
-            result[normalized_key] = value
+        for env_key, env_value in raw_values.items():
+            normalized_key = normalize_key(env_key)
+            if normalized_key in valid_keys:
+                result[normalized_key] = env_value
 
         return result
 

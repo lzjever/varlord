@@ -11,5 +11,6 @@ Complete API documentation for all Varlord classes and functions.
    sources
    policy
    validators
+   model_validation
    logging
 

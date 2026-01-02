@@ -5,11 +5,8 @@ Defines the interface that all configuration sources must implement.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Iterator, Optional, TYPE_CHECKING
+from typing import Mapping, Any, Iterator, Optional, Type
 from dataclasses import dataclass
-
-if TYPE_CHECKING:
-    from typing import Protocol
 
 
 def normalize_key(key: str) -> str:
@@ -80,6 +77,15 @@ class Source:
     Optional:
     - watch() -> Iterator[ChangeEvent]: Stream of changes for dynamic updates
     """
+
+    def __init__(self, model: Optional[Type[Any]] = None):
+        """Initialize Source.
+
+        Args:
+            model: Optional dataclass model for field filtering.
+                  If provided, source will only load fields defined in model.
+        """
+        self._model = model
 
     @property
     def name(self) -> str:

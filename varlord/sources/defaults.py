@@ -2,21 +2,22 @@
 Defaults source.
 
 Loads default values from dataclass model fields.
+This is now an internal source used automatically by Config.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Type
-from dataclasses import fields, is_dataclass
+from typing import Mapping, Any, Type, Optional
+from dataclasses import is_dataclass
 
-from varlord.sources.base import Source, normalize_key
+from varlord.sources.base import Source
+from varlord.metadata import get_all_fields_info
 
 
 class Defaults(Source):
     """Source that loads default values from a dataclass model.
 
     This source extracts default values from dataclass field definitions.
-    It should typically be placed first in the sources list to provide
-    baseline defaults that can be overridden by other sources.
+    It is automatically used by Config as the first source (base layer).
 
     Example:
         >>> @dataclass
@@ -37,21 +38,14 @@ class Defaults(Source):
 
         Raises:
             TypeError: If model is not a dataclass
-            ValueError: If any field name contains double underscores (__)
         """
+        super().__init__(model=model)
+
         if not is_dataclass(model):
             raise TypeError(f"Model must be a dataclass, got {type(model)}")
 
-        # Validate field names: disallow double underscores
-        for field in fields(model):
-            if "__" in field.name:
-                raise ValueError(
-                    f"Field name '{field.name}' in {model.__name__} contains double underscores (__). "
-                    "Double underscores are reserved for nested configuration. "
-                    "Use nested dataclasses or single underscores instead."
-                )
-
-        self._model = model
+        # Support precomputed defaults (for performance)
+        self._precomputed_defaults: Optional[dict[str, Any]] = None
 
     @property
     def name(self) -> str:
@@ -62,29 +56,29 @@ class Defaults(Source):
         """Load default values from the model.
 
         Returns:
-            A mapping of field names to their default values.
+            A mapping of normalized keys to their default values.
             Fields without defaults are excluded.
+            Supports nested fields (e.g., {"db.host": "localhost"}).
         """
-        from dataclasses import _MISSING_TYPE
+        # Use precomputed defaults if available
+        if self._precomputed_defaults is not None:
+            return self._precomputed_defaults.copy()
 
+        # Extract defaults from model
         result: dict[str, Any] = {}
-        for field in fields(self._model):
-            # Check if field has a default value
-            # field.default is ... means no default
-            # field.default is _MISSING_TYPE also means no default
-            if field.default is not ... and not isinstance(field.default, _MISSING_TYPE):
-                normalized_key = normalize_key(field.name)
-                result[normalized_key] = field.default
-            elif field.default_factory is not ... and not isinstance(
-                field.default_factory, _MISSING_TYPE
-            ):
-                # Handle default_factory
+        field_infos = get_all_fields_info(self._model)
+
+        for field_info in field_infos:
+            # Check for default value
+            if field_info.default is not ...:
+                result[field_info.normalized_key] = field_info.default
+            # Check for default_factory
+            elif field_info.default_factory is not ...:
                 try:
-                    normalized_key = normalize_key(field.name)
-                    result[normalized_key] = field.default_factory()
+                    result[field_info.normalized_key] = field_info.default_factory()
                 except Exception:
-                    # If factory fails, skip this field
-                    pass
+                    pass  # Skip if factory fails
+
         return result
 
     def __repr__(self) -> str:

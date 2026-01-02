@@ -2,8 +2,7 @@
 Tests for key normalization and field name validation.
 """
 
-import pytest
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from varlord.sources.base import normalize_key
 from varlord.sources.defaults import Defaults
 
@@ -117,35 +116,42 @@ class TestDefaultsFieldValidation:
         assert "host" in config
         assert "k8s_pod_name" in config
 
-    def test_double_underscore_in_field_name_raises_error(self):
-        """Test that double underscore in field name raises ValueError."""
+    def test_double_underscore_in_field_name_allowed(self):
+        """Test that double underscore in field name is allowed (validation removed)."""
 
         @dataclass
         class Config:
-            db__host: str = "localhost"
+            db__host: str = field(default="localhost", metadata={"optional": True})
 
-        with pytest.raises(ValueError, match="contains double underscores"):
-            Defaults(model=Config)
+        # Should not raise - validation was removed
+        source = Defaults(model=Config)
+        config = source.load()
+        assert "db__host" in config or "db.host" in config
 
-    def test_multiple_double_underscores_raises_error(self):
-        """Test that multiple double underscores raise error."""
-
-        @dataclass
-        class Config:
-            a__b__c: str = "value"
-
-        with pytest.raises(ValueError, match="contains double underscores"):
-            Defaults(model=Config)
-
-    def test_triple_underscore_in_field_name_raises_error(self):
-        """Test that triple underscore (which contains __) raises error."""
+    def test_multiple_double_underscores_allowed(self):
+        """Test that multiple double underscores are allowed."""
 
         @dataclass
         class Config:
-            a___b: str = "value"
+            a__b__c: str = field(default="value", metadata={"optional": True})
 
-        with pytest.raises(ValueError, match="contains double underscores"):
-            Defaults(model=Config)
+        # Should not raise
+        source = Defaults(model=Config)
+        config = source.load()
+        assert "a__b__c" in config or "a.b.c" in config
+
+    def test_triple_underscore_in_field_name_allowed(self):
+        """Test that triple underscore is allowed."""
+
+        @dataclass
+        class Config:
+            a___b: str = field(default="value", metadata={"optional": True})
+
+        # Should not raise
+        source = Defaults(model=Config)
+        config = source.load()
+        # Triple underscore will be normalized (___ becomes ._)
+        assert "a___b" in config or "a._b" in config
 
     def test_single_underscore_allowed(self):
         """Test that single underscores are allowed."""
@@ -161,19 +167,18 @@ class TestDefaultsFieldValidation:
         assert "k8s_pod_name" in config
         assert "api_timeout" in config
 
-    def test_error_message_includes_field_name(self):
-        """Test that error message includes the problematic field name."""
+    def test_double_underscore_field_name_works(self):
+        """Test that double underscore field name works (no validation)."""
 
         @dataclass
         class Config:
-            db__host: str = "localhost"
+            db__host: str = field(default="localhost", metadata={"optional": True})
 
-        with pytest.raises(ValueError) as exc_info:
-            Defaults(model=Config)
-
-        error_msg = str(exc_info.value)
-        assert "db__host" in error_msg
-        assert "Config" in error_msg
+        # Should work without error
+        source = Defaults(model=Config)
+        config = source.load()
+        # Field name will be normalized
+        assert "db__host" in config or "db.host" in config
 
     def test_nested_dataclass_allowed(self):
         """Test that nested dataclasses are allowed (they use dot notation, not __)."""
@@ -195,13 +200,16 @@ class TestDefaultsFieldValidation:
         assert "api_timeout" in config
 
     def test_multiple_fields_with_double_underscore(self):
-        """Test that error is raised even if only one field has double underscore."""
+        """Test that multiple fields with double underscore work."""
 
         @dataclass
         class Config:
-            host: str = "localhost"
-            db__host: str = "localhost"  # This should trigger error
-            port: int = 8000
+            host: str = field(default="localhost", metadata={"optional": True})
+            db__host: str = field(default="localhost", metadata={"optional": True})
+            port: int = field(default=8000, metadata={"optional": True})
 
-        with pytest.raises(ValueError, match="contains double underscores"):
-            Defaults(model=Config)
+        # Should work without error
+        source = Defaults(model=Config)
+        config = source.load()
+        assert "host" in config
+        assert "port" in config

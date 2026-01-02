@@ -6,49 +6,50 @@ Varlord supports multiple configuration sources, each implementing the ``Source`
 Defaults Source
 ---------------
 
-Loads default values from your dataclass model:
+Model defaults are automatically applied as the base layer. You no longer need to explicitly include ``sources.Defaults`` in your sources list.
 
-.. code-block:: python
-
-   from varlord import sources
-
-   source = sources.Defaults(model=AppConfig)
-   config = source.load()  # Returns default values
+**Note**: The ``Defaults`` source is now internal. Model defaults are automatically extracted and applied first, before any user-provided sources.
 
 Environment Variables
 ---------------------
 
-Loads from environment variables with optional prefix:
+Loads from environment variables, filtered by model fields:
 
 .. code-block:: python
 
-   source = sources.Env(prefix="APP_")
-   # Loads APP_HOST, APP_PORT, etc.
-   # Converts APP_DB__HOST to db.host (nested keys)
+   source = sources.Env(model=AppConfig)  # Model required
+   # Only loads environment variables that match model fields
+   # HOST -> host, PORT -> port, etc.
+   # Converts DB__HOST to db.host (nested keys)
+
+**Important**: The ``prefix`` parameter has been removed. All environment variables are filtered by model fields. Only variables that map to model fields are loaded.
 
 CLI Arguments
 -------------
 
-Loads from command-line arguments:
+Loads from command-line arguments, filtered by model fields:
 
 .. code-block:: python
 
-   source = sources.CLI()  # Model auto-injected from Config
+   source = sources.CLI(model=AppConfig)  # Model required (auto-injected by Config)
+   # Only parses arguments for model fields
    # Parses --host, --port, --debug, etc.
+   # Uses field metadata for help text and required flags
 
 DotEnv Files
 ------------
 
-Loads from `.env` files (requires ``varlord[dotenv]``):
+Loads from `.env` files, filtered by model fields (requires ``varlord[dotenv]``):
 
 .. code-block:: python
 
-   source = sources.DotEnv(".env")
+   source = sources.DotEnv(".env", model=AppConfig)  # Model required
+   # Only loads variables that match model fields
 
 Etcd
 ----
 
-Loads from etcd with optional watch support (requires ``varlord[etcd]``):
+Loads from etcd with optional watch support, filtered by model fields (requires ``varlord[etcd]``):
 
 .. code-block:: python
 
@@ -57,7 +58,9 @@ Loads from etcd with optional watch support (requires ``varlord[etcd]``):
        port=2379,
        prefix="/app/",
        watch=True,  # Enable dynamic updates
+       model=AppConfig,  # Model required (auto-injected by Config)
    )
+   # Only loads keys that match model fields
 
 Custom Sources
 --------------

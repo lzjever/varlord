@@ -24,24 +24,23 @@ earlier ones**. Let's see this in action:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"  # Default
-       port: int = 8000          # Default
-       debug: bool = False       # Default
+       host: str = field(default="127.0.0.1", metadata={"optional": True})  # Default
+       port: int = field(default=8000, metadata={"optional": True})          # Default
+       debug: bool = field(default=False, metadata={"optional": True})       # Default
 
-   # Set environment variable
-   os.environ["APP_HOST"] = "0.0.0.0"
-   os.environ["APP_PORT"] = "9000"
+   # Set environment variable (no prefix needed - filtered by model)
+   os.environ["HOST"] = "0.0.0.0"
+   os.environ["PORT"] = "9000"
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),  # 1. Loads defaults
-           sources.Env(prefix="APP_"),         # 2. Overrides with env vars
+           sources.Env(),  # Model defaults applied first, then env overrides
        ],
    )
 
@@ -60,8 +59,9 @@ earlier ones**. Let's see this in action:
 
 **Key Points**:
 
-- Defaults are loaded first (lowest priority)
+- Model defaults are automatically applied first (lowest priority)
 - Environment variables override defaults
+- Only environment variables that match model fields are loaded
 - Fields not in environment keep their default values
 
 Step 2: Adding Command-Line Arguments
@@ -74,17 +74,17 @@ Command-line arguments have the highest priority (when listed last):
 
    import sys
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
 
    # Set environment variable
-   os.environ["APP_PORT"] = "9000"
+   os.environ["PORT"] = "9000"
 
    # Simulate command-line arguments
    sys.argv = ["app.py", "--host", "192.168.1.1", "--port", "8080", "--debug"]
@@ -92,9 +92,8 @@ Command-line arguments have the highest priority (when listed last):
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),  # 1. Defaults
-           sources.Env(prefix="APP_"),         # 2. Environment
-           sources.CLI(model=AppConfig),       # 3. CLI (highest priority)
+           sources.Env(),         # 1. Environment (overrides defaults)
+           sources.CLI(),         # 2. CLI (highest priority, overrides env)
        ],
    )
 
@@ -113,7 +112,7 @@ Command-line arguments have the highest priority (when listed last):
 
 **Priority Order** (lowest to highest):
 
-1. Defaults
+1. Model defaults (automatically applied)
 2. Environment variables
 3. Command-line arguments
 
@@ -126,23 +125,22 @@ Varlord provides a convenient method to set up common sources:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
 
-   # Set environment variables
-   os.environ["APP_HOST"] = "0.0.0.0"
-   os.environ["APP_PORT"] = "9000"
+   # Set environment variables (no prefix needed)
+   os.environ["HOST"] = "0.0.0.0"
+   os.environ["PORT"] = "9000"
 
    # Convenient setup
    cfg = Config.from_model(
        model=AppConfig,
-       env_prefix="APP_",
        cli=True,  # Enable CLI arguments
    )
 
@@ -161,7 +159,8 @@ Varlord provides a convenient method to set up common sources:
 
 - Less boilerplate code
 - Automatically sets up common sources
-- Model is automatically injected to sources
+- Model is automatically injected to all sources
+- Model defaults are automatically applied
 
 Step 4: Environment Variable Naming
 -----------------------------------
@@ -173,23 +172,23 @@ nested keys:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
 
-   # Environment variables with prefix
-   os.environ["APP_HOST"] = "0.0.0.0"
-   os.environ["APP_PORT"] = "9000"
+   # Environment variables (filtered by model - no prefix needed)
+   os.environ["HOST"] = "0.0.0.0"
+   os.environ["PORT"] = "9000"
+   os.environ["UNRELATED_VAR"] = "ignored"  # Will be filtered out
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),  # Prefix filters variables
+           sources.Env(),  # Only loads HOST and PORT (filtered by model)
        ],
    )
 
@@ -199,9 +198,10 @@ nested keys:
 
 **Key Mapping Rules**:
 
-- ``APP_HOST`` → ``host`` (prefix removed, lowercase)
-- ``APP_PORT`` → ``port`` (prefix removed, lowercase)
-- For nested keys: ``APP_DB__HOST`` → ``db.host`` (``__`` becomes ``.``)
+- ``HOST`` → ``host`` (lowercase, matches model field)
+- ``PORT`` → ``port`` (lowercase, matches model field)
+- ``UNRELATED_VAR`` → ignored (not in model)
+- For nested keys: ``DB__HOST`` → ``db.host`` (``__`` becomes ``.``)
 
 Step 5: Command-Line Argument Format
 -------------------------------------
@@ -212,14 +212,14 @@ Command-line arguments use kebab-case and are converted to dot notation:
    :linenos:
 
    import sys
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
 
    # Command-line arguments
    sys.argv = [
@@ -232,8 +232,7 @@ Command-line arguments use kebab-case and are converted to dot notation:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.CLI(model=AppConfig),
+           sources.CLI(),  # Model auto-injected, only parses model fields
        ],
    )
 
@@ -267,20 +266,20 @@ Here's a complete example combining all sources:
 
    import os
    import sys
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "127.0.0.1"
-       port: int = 8000
-       debug: bool = False
-       app_name: str = "MyApp"
+       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
+       app_name: str = field(default="MyApp", metadata={"optional": True})
 
    def main():
-       # Set environment variables
-       os.environ["APP_PORT"] = "9000"
-       os.environ["APP_DEBUG"] = "true"
+       # Set environment variables (no prefix needed)
+       os.environ["PORT"] = "9000"
+       os.environ["DEBUG"] = "true"
 
        # Simulate CLI arguments
        sys.argv = ["app.py", "--host", "0.0.0.0"]
@@ -289,9 +288,8 @@ Here's a complete example combining all sources:
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Defaults(model=AppConfig),  # Priority 1 (lowest)
-               sources.Env(prefix="APP_"),         # Priority 2
-               sources.CLI(model=AppConfig),       # Priority 3 (highest)
+               sources.Env(),         # Priority 1 (overrides defaults)
+               sources.CLI(),         # Priority 2 (highest, overrides env)
            ],
        )
 
@@ -322,38 +320,36 @@ Common Pitfalls
 **Pitfall 1: Wrong source order**
 
 .. code-block:: python
-   :emphasize-lines: 5-7
+   :emphasize-lines: 5-6
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.CLI(model=AppConfig),  # CLI first!
-           sources.Env(prefix="APP_"),   # Env will override CLI
-           sources.Defaults(model=AppConfig),
+           sources.CLI(),  # CLI first!
+           sources.Env(),   # Env will override CLI
        ],
    )
    # CLI arguments will be overridden by env vars - probably not what you want!
 
 **Solution**: Always put sources in priority order (lowest to highest):
-Defaults → Env → CLI.
+Env → CLI (defaults are automatically applied first).
 
-**Pitfall 2: Missing prefix in environment variables**
+**Pitfall 2: Environment variables not matching model fields**
 
 .. code-block:: python
    :emphasize-lines: 2, 7
 
-   os.environ["HOST"] = "0.0.0.0"  # No prefix
+   os.environ["MY_HOST"] = "0.0.0.0"  # Doesn't match model field
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Env(prefix="APP_"),  # Looking for APP_* variables
+           sources.Env(),  # Only loads fields defined in model
        ],
    )
-   # HOST won't be loaded because it doesn't have APP_ prefix
+   # MY_HOST won't be loaded because it doesn't match any model field
 
-**Solution**: Use the correct prefix, or use ``prefix=None`` to load all
-environment variables (not recommended for production).
+**Solution**: Use environment variable names that match model field names (normalized to uppercase). For ``host`` field, use ``HOST`` environment variable.
 
 **Pitfall 3: Type conversion issues**
 
@@ -371,10 +367,11 @@ Varlord automatically converts strings to the appropriate types.
 Best Practices
 --------------
 
-1. **Always include Defaults first**: Provides fallback values
-2. **Use prefixes for environment variables**: Prevents conflicts
-3. **Order sources by priority**: Defaults → Env → CLI
+1. **Model defaults are automatic**: No need to include ``sources.Defaults``
+2. **All sources filter by model**: Only model-defined fields are loaded
+3. **Order sources by priority**: Env → CLI (defaults applied first automatically)
 4. **Use Config.from_model() for common setups**: Reduces boilerplate
+5. **Explicitly mark fields**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
 
 Next Steps
 ----------

@@ -21,27 +21,25 @@ Let's create a configuration with nested structures:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       database: str = "mydb"
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       database: str = field(default="mydb", metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = None  # Nested configuration
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default=None, metadata={"optional": True})  # Nested configuration
 
-   # Initialize with defaults
+   # Initialize with defaults (automatic)
    cfg = Config(
        model=AppConfig,
-       sources=[
-           sources.Defaults(model=AppConfig),
-       ],
+       sources=[],  # Defaults are automatically applied
    )
 
    app = cfg.load()
@@ -68,25 +66,23 @@ To provide default nested objects, use ``field(default_factory=...)``:
    :linenos:
 
    from dataclasses import dataclass, field
-   from varlord import Config, sources
+   from varlord import Config
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       database: str = "mydb"
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       database: str = field(default="mydb", metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
    cfg = Config(
        model=AppConfig,
-       sources=[
-           sources.Defaults(model=AppConfig),
-       ],
+       sources=[],  # Defaults are automatically applied
    )
 
    app = cfg.load()
@@ -120,26 +116,25 @@ keys:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       database: str = "mydb"
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       database: str = field(default="mydb", metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
-   # Set nested environment variables
-   os.environ["APP_DB__HOST"] = "db.example.com"
-   os.environ["APP_DB__PORT"] = "3306"
-   os.environ["APP_DB__DATABASE"] = "production"
+   # Set nested environment variables (no prefix needed - filtered by model)
+   os.environ["DB__HOST"] = "db.example.com"
+   os.environ["DB__PORT"] = "3306"
+   os.environ["DB__DATABASE"] = "production"
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_", separator="__"),  # __ separates nested keys
+           sources.Env(),  # Only loads DB__HOST, DB__PORT, DB__DATABASE (filtered by model)
        ],
    )
 
@@ -156,12 +151,12 @@ keys:
 
 **Key Mapping**:
 
-- ``APP_DB__HOST`` → ``db.host``
-- ``APP_DB__PORT`` → ``db.port``
-- ``APP_DB__DATABASE`` → ``db.database``
+- ``DB__HOST`` → ``db.host``
+- ``DB__PORT`` → ``db.port``
+- ``DB__DATABASE`` → ``db.database``
 
 The double underscore (``__``) is converted to a dot (``.``) for nested
-structure mapping.
+structure mapping. Only environment variables that match model fields are loaded.
 
 Step 4: Loading Nested Configuration from CLI
 -----------------------------------------------
@@ -177,14 +172,14 @@ Command-line arguments use hyphens for nested keys:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
    # Command-line arguments for nested fields
    sys.argv = [
@@ -196,8 +191,7 @@ Command-line arguments use hyphens for nested keys:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.CLI(model=AppConfig),
+           sources.CLI(),  # Model auto-injected, only parses model fields
        ],
    )
 
@@ -231,29 +225,28 @@ You can nest multiple levels:
 
    @dataclass(frozen=True)
    class CacheConfig:
-       enabled: bool = False
-       ttl: int = 3600
+       enabled: bool = field(default=False, metadata={"optional": True})
+       ttl: int = field(default=3600, metadata={"optional": True})
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       cache: CacheConfig = field(default_factory=lambda: CacheConfig())
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       cache: CacheConfig = field(default_factory=lambda: CacheConfig(), metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
-   # Set deeply nested environment variables
-   os.environ["APP_DB__CACHE__ENABLED"] = "true"
-   os.environ["APP_DB__CACHE__TTL"] = "7200"
+   # Set deeply nested environment variables (no prefix needed)
+   os.environ["DB__CACHE__ENABLED"] = "true"
+   os.environ["DB__CACHE__TTL"] = "7200"
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_", separator="__"),
+           sources.Env(),  # Only loads variables matching model fields
        ],
    )
 
@@ -270,8 +263,8 @@ You can nest multiple levels:
 
 **Deep Nesting Mapping**:
 
-- ``APP_DB__CACHE__ENABLED`` → ``db.cache.enabled``
-- ``APP_DB__CACHE__TTL`` → ``db.cache.ttl``
+- ``DB__CACHE__ENABLED`` → ``db.cache.enabled``
+- ``DB__CACHE__TTL`` → ``db.cache.ttl``
 
 Step 6: Complete Example
 ------------------------
@@ -289,27 +282,27 @@ Here's a complete example with multiple nested structures:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
-       database: str = "mydb"
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
+       database: str = field(default="mydb", metadata={"optional": True})
 
    @dataclass(frozen=True)
    class RedisConfig:
-       host: str = "localhost"
-       port: int = 6379
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=6379, metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
-       redis: RedisConfig = field(default_factory=lambda: RedisConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       redis: RedisConfig = field(default_factory=lambda: RedisConfig(), metadata={"optional": True})
 
    def main():
-       # Set environment variables
-       os.environ["APP_DB__HOST"] = "db.example.com"
-       os.environ["APP_DB__PORT"] = "3306"
-       os.environ["APP_REDIS__HOST"] = "redis.example.com"
+       # Set environment variables (no prefix needed)
+       os.environ["DB__HOST"] = "db.example.com"
+       os.environ["DB__PORT"] = "3306"
+       os.environ["REDIS__HOST"] = "redis.example.com"
 
        # Set CLI arguments
        sys.argv = ["app.py", "--port", "9000"]
@@ -317,9 +310,8 @@ Here's a complete example with multiple nested structures:
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Defaults(model=AppConfig),
-               sources.Env(prefix="APP_", separator="__"),
-               sources.CLI(model=AppConfig),
+               sources.Env(),  # Priority 1 (overrides defaults)
+               sources.CLI(),  # Priority 2 (highest, overrides env)
            ],
        )
 
@@ -367,28 +359,28 @@ default nested objects.
 .. code-block:: python
    :emphasize-lines: 2, 8
 
-   os.environ["APP_DB_HOST"] = "db.example.com"  # Single underscore
+   os.environ["DB_HOST"] = "db.example.com"  # Single underscore
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Env(prefix="APP_", separator="__"),  # Looking for __
+           sources.Env(),  # Looking for DB__HOST (double underscore)
        ],
    )
-   # APP_DB_HOST won't be recognized as nested key
+   # DB_HOST won't be recognized as nested key (becomes flat key "db_host")
 
 **Solution**: Use double underscore (``__``) as separator for nested keys in
-environment variables, or use the default separator.
+environment variables. For ``db.host``, use ``DB__HOST``.
 
 **Pitfall 3: Mixing flat and nested keys incorrectly**
 
 .. code-block:: python
    :emphasize-lines: 2
 
-   os.environ["APP_DB_HOST"] = "db.example.com"  # This becomes flat key "db_host"
+   os.environ["DB_HOST"] = "db.example.com"  # This becomes flat key "db_host"
 
    # If your model has db.host (nested), this won't map correctly
-   # Use APP_DB__HOST instead
+   # Use DB__HOST instead
 
 **Solution**: Always use the correct separator (``__`` for env, ``-`` for CLI)
 for nested keys.

@@ -23,8 +23,8 @@ def test_defaults_with_factory():
 
     @dataclass
     class Config:
-        items: list = field(default_factory=list)
-        count: int = 0
+        items: list = field(default_factory=list, metadata={"optional": True})
+        count: int = field(default=0, metadata={"optional": True})
 
     source = Defaults(model=Config)
     config = source.load()
@@ -52,3 +52,20 @@ def test_defaults_name():
 
     source = Defaults(model=Config)
     assert source.name == "defaults"
+
+
+def test_defaults_precomputed():
+    """Test precomputed defaults."""
+    from dataclasses import dataclass, field
+
+    @dataclass
+    class Config:
+        host: str = field(default="localhost", metadata={"optional": True})
+        port: int = field(default=8000, metadata={"optional": True})
+
+    source = Defaults(model=Config)
+    source._precomputed_defaults = {"host": "precomputed", "port": 9999}
+
+    config = source.load()
+    assert config["host"] == "precomputed"
+    assert config["port"] == 9999

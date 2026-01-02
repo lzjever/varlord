@@ -1,88 +1,75 @@
 """
 Environment variable source.
 
-Loads configuration from environment variables with optional prefix
-and key normalization.
+Loads configuration from environment variables, filtered by model fields.
 """
 
 from __future__ import annotations
 import os
-from typing import Mapping, Any, Optional, Callable
+from typing import Mapping, Any, Optional, Type
 
 from varlord.sources.base import Source, normalize_key
+from varlord.metadata import get_all_field_keys
 
 
 class Env(Source):
     """Source that loads configuration from environment variables.
 
-    Supports:
-    - Prefix filtering (e.g., ``"APP_"`` to only load APP_* variables)
-    - Key normalization (e.g., ``"APP_DB__HOST"`` -> ``"db.host"``)
-    - Custom key transformation
+    Only loads environment variables that map to fields defined in the model.
+    Model is required and will be auto-injected by Config if not provided.
 
     Example:
-        >>> # Environment: APP_HOST=0.0.0.0 APP_PORT=9000
-        >>> source = Env(prefix="APP_")
+        >>> @dataclass
+        ... class Config:
+        ...     api_key: str = field(metadata={"required": True})
+        >>> # Environment: API_KEY=value1 OTHER_VAR=ignored
+        >>> source = Env(model=Config)
         >>> source.load()
-        {'host': '0.0.0.0', 'port': '9000'}
-
-        >>> # With nested key support
-        >>> # Environment: APP_DB__HOST=localhost
-        >>> source = Env(prefix="APP_")
-        >>> source.load()
-        {'db.host': 'localhost'}
+        {'api_key': 'value1'}  # OTHER_VAR is ignored
     """
 
-    def __init__(
-        self,
-        prefix: str = "",
-        normalize_key: Optional[Callable[[str], str]] = None,
-    ):
+    def __init__(self, model: Optional[Type[Any]] = None):
         """Initialize Env source.
 
         Args:
-            prefix: Prefix to filter environment variables (e.g., ``"APP_"``)
-            normalize_key: Optional function to normalize keys.
-                          If None, uses unified normalization (__ -> ., _ preserved, lowercase)
+            model: Model to filter environment variables.
+                  Only variables that map to model fields will be loaded.
+                  Model is required and will be auto-injected by Config.
+
+        Note:
+            Prefix filtering is removed. All env vars are checked against model fields.
         """
-        self._prefix = prefix
-        self._normalize_key = normalize_key or self._default_normalize
+        super().__init__(model=model)
 
     @property
     def name(self) -> str:
         """Return source name."""
         return "env"
 
-    def _default_normalize(self, key: str) -> str:
-        """Default key normalization.
-
-        Converts "APP_DB__HOST" -> "db.host" (assuming prefix="APP_")
-        Uses unified normalization: __ -> ., _ preserved, lowercase
-        """
-        # Remove prefix
-        if self._prefix and key.startswith(self._prefix):
-            key = key[len(self._prefix) :]
-
-        # Apply unified normalization
-        return normalize_key(key)
-
     def load(self) -> Mapping[str, Any]:
-        """Load configuration from environment variables.
+        """Load configuration from environment variables, filtered by model fields.
 
         Returns:
             A mapping of normalized keys to environment variable values.
+            Only includes variables that map to model fields.
+
+        Raises:
+            ValueError: If model is not provided
         """
+        if not self._model:
+            raise ValueError("Env source requires model (should be auto-injected by Config)")
+
+        # Get all valid field keys from model
+        valid_keys = get_all_field_keys(self._model)
+
         result: dict[str, Any] = {}
-        for key, value in os.environ.items():
-            # Filter by prefix
-            if self._prefix and not key.startswith(self._prefix):
-                continue
+        for env_key, env_value in os.environ.items():
+            # Normalize env var name (no prefix filtering)
+            normalized_key = normalize_key(env_key)
 
-            # Normalize key
-            normalized_key = self._normalize_key(key)
-
-            # Store value
-            result[normalized_key] = value
+            # Only load if it matches a model field
+            if normalized_key in valid_keys:
+                result[normalized_key] = env_value
 
         return result
 

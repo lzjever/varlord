@@ -5,14 +5,14 @@ pytest 配置和 fixtures
 import os
 import sys
 from pathlib import Path
+from dataclasses import dataclass
 
 # Add project root to Python path so tests can import varlord
 project_root = Path(__file__).parent.parent
 if str(project_root) not in sys.path:
     sys.path.insert(0, str(project_root))
 
-import pytest
-from dataclasses import dataclass
+import pytest  # noqa: E402
 
 
 @pytest.fixture
@@ -45,13 +45,15 @@ def cleanup_files():
 
 @pytest.fixture
 def sample_config_model():
-    """提供示例配置模型"""
+    """提供示例配置模型（所有字段都是 optional，有默认值）"""
+
+    from dataclasses import field
 
     @dataclass(frozen=True)
     class SampleConfig:
-        host: str = "127.0.0.1"
-        port: int = 8000
-        debug: bool = False
-        timeout: float = 30.0
+        host: str = field(default="127.0.0.1", metadata={"optional": True})
+        port: int = field(default=8000, metadata={"optional": True})
+        debug: bool = field(default=False, metadata={"optional": True})
+        timeout: float = field(default=30.0, metadata={"optional": True})
 
     return SampleConfig

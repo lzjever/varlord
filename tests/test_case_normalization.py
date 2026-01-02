@@ -1,25 +1,24 @@
 """Tests for case normalization across sources."""
 
-import pytest
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from varlord import Config, sources
 
 
 @dataclass
 class AppConfig:
-    host: str = "default"
-    port: int = 8000
+    host: str = field(default="default", metadata={"optional": True})
+    port: int = field(default=8000, metadata={"optional": True})
 
 
 def test_env_case_normalization():
     """Test that Env source normalizes keys to lowercase."""
     try:
-        os.environ["APP_HOST"] = "env-host"
-        os.environ["APP_PORT"] = "9000"
+        os.environ["HOST"] = "env-host"
+        os.environ["PORT"] = "9000"
 
-        source = sources.Env(prefix="APP_")
+        source = sources.Env(model=AppConfig)
         result = source.load()
 
         # Should be lowercase
@@ -32,8 +31,8 @@ def test_env_case_normalization():
         assert "HOST" not in result
         assert "PORT" not in result
     finally:
-        os.environ.pop("APP_HOST", None)
-        os.environ.pop("APP_PORT", None)
+        os.environ.pop("HOST", None)
+        os.environ.pop("PORT", None)
 
 
 def test_cli_case_normalization():
@@ -48,7 +47,6 @@ def test_cli_case_normalization():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
                 sources.CLI(model=AppConfig),
             ],
         )
@@ -74,25 +72,23 @@ def test_dotenv_case_normalization():
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=dotenv-host\n")
         f.write("PORT=7777\n")
-        f.write("DB_HOST=dotenv-db-host\n")
+        f.write("UNRELATED_VAR=ignored\n")  # This will be filtered out by model
         temp_path = f.name
 
     try:
-        source = sources.DotEnv(temp_path)
+        source = sources.DotEnv(temp_path, model=AppConfig)
         result = source.load()
 
-        # Should be lowercase
+        # Should be lowercase and filtered by model
         assert "host" in result
         assert "port" in result
-        assert "db_host" in result  # Underscores preserved, only case converted
+        assert "unrelated_var" not in result  # Filtered out by model
         assert result["host"] == "dotenv-host"
         assert result["port"] == "7777"
-        assert result["db_host"] == "dotenv-db-host"
 
         # Should not have uppercase keys
         assert "HOST" not in result
         assert "PORT" not in result
-        assert "DB_HOST" not in result
     finally:
         os.unlink(temp_path)
 
@@ -108,15 +104,14 @@ def test_unified_case_across_sources():
         temp_path = f.name
 
     try:
-        os.environ["APP_HOST"] = "env-host"
+        os.environ["HOST"] = "env-host"
         sys.argv = ["test", "--host", "cli-host"]
 
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
-                sources.DotEnv(temp_path),  # Returns {"host": "dotenv-host"}
-                sources.Env(prefix="APP_"),  # Returns {"host": "env-host"}
+                sources.DotEnv(temp_path, model=AppConfig),  # Returns {"host": "dotenv-host"}
+                sources.Env(model=AppConfig),  # Returns {"host": "env-host"}
                 sources.CLI(model=AppConfig),  # Returns {"host": "cli-host"}
             ],
         )
@@ -127,5 +122,5 @@ def test_unified_case_across_sources():
         assert app.host == "cli-host"
     finally:
         sys.argv = original_argv
-        os.environ.pop("APP_HOST", None)
+        os.environ.pop("HOST", None)
         os.unlink(temp_path)

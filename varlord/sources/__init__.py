@@ -24,14 +24,14 @@ __all__ = [
 
 # Optional sources (require extras)
 try:
-    from varlord.sources.dotenv import DotEnv
+    from varlord.sources.dotenv import DotEnv  # noqa: F401
 
     __all__.append("DotEnv")
 except ImportError:
     pass
 
 try:
-    from varlord.sources.etcd import Etcd
+    from varlord.sources.etcd import Etcd  # noqa: F401
 
     __all__.append("Etcd")
 except ImportError:

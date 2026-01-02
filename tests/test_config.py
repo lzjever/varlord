@@ -2,18 +2,14 @@
 Tests for Config class.
 """
 
-import pytest
-from dataclasses import dataclass
 from varlord import Config, sources
 
 
 def test_config_basic(sample_config_model):
-    """Test basic config loading."""
+    """Test basic config loading (no sources, only defaults)."""
     cfg = Config(
         model=sample_config_model,
-        sources=[
-            sources.Defaults(model=sample_config_model),
-        ],
+        sources=[],  # No sources needed - defaults are automatic
     )
 
     app = cfg.load()
@@ -24,14 +20,13 @@ def test_config_basic(sample_config_model):
 
 def test_config_with_env(sample_config_model, monkeypatch):
     """Test config with environment variables."""
-    monkeypatch.setenv("APP_HOST", "0.0.0.0")
-    monkeypatch.setenv("APP_PORT", "9000")
+    monkeypatch.setenv("HOST", "0.0.0.0")
+    monkeypatch.setenv("PORT", "9000")
 
     cfg = Config(
         model=sample_config_model,
         sources=[
-            sources.Defaults(model=sample_config_model),
-            sources.Env(prefix="APP_"),
+            sources.Env(),  # No prefix - filtered by model
         ],
     )
 
@@ -43,14 +38,14 @@ def test_config_with_env(sample_config_model, monkeypatch):
 
 def test_config_priority(sample_config_model, monkeypatch):
     """Test config priority ordering."""
-    monkeypatch.setenv("APP_HOST", "env_value")
+    monkeypatch.setenv("HOST", "env_value")
 
     # Priority is determined by sources order: later sources override earlier ones
+    # Defaults are automatically applied first
     cfg = Config(
         model=sample_config_model,
         sources=[
-            sources.Defaults(model=sample_config_model),
-            sources.Env(prefix="APP_"),  # Later source overrides earlier one
+            sources.Env(),  # Later source overrides defaults
         ],
     )
 

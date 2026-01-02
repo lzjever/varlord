@@ -2,34 +2,72 @@ Validation
 ==========
 
 In this tutorial, you'll learn how to validate configuration values using
-Varlord's built-in validators and custom validation logic.
+Varlord's built-in validators, required field validation, and custom validation logic.
 
 Learning Objectives
 -------------------
 
 By the end of this tutorial, you'll be able to:
 
-- Use built-in validators to validate configuration
+- Use explicit required/optional field metadata
+- Validate required fields are provided
+- Use built-in validators to validate configuration values
 - Create custom validation logic
 - Understand when validation occurs
 - Handle validation errors
 
-Step 1: Basic Validation
-------------------------
+Step 1: Explicit Required/Optional Fields
+-----------------------------------------
+
+All fields must explicitly specify whether they are required or optional:
+
+.. code-block:: python
+   :linenos:
+
+   from dataclasses import dataclass, field
+   from varlord import Config
+
+   @dataclass(frozen=True)
+   class AppConfig:
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       api_key: str = field(metadata={"required": True})  # Required - no default
+
+   # This will raise RequiredFieldError if api_key is not provided
+   from varlord.model_validation import RequiredFieldError
+
+   cfg = Config(
+       model=AppConfig,
+       sources=[],  # No sources provide api_key
+   )
+
+   try:
+       app = cfg.load()
+   except RequiredFieldError as e:
+       print(f"Missing required fields: {e.missing_fields}")
+
+**Key Points**:
+
+- All fields must have ``metadata={"required": True}`` or ``metadata={"optional": True}``
+- Required fields must be provided by at least one source
+- Empty strings and empty collections are considered valid (presence is checked, not emptiness)
+
+Step 2: Basic Value Validation
+-------------------------------
 
 Let's add validation to ensure configuration values are correct:
 
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
    from varlord.validators import validate_port, validate_not_empty
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -37,7 +75,7 @@ Let's add validation to ensure configuration values are correct:
 
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],
    )
 
    app = cfg.load()
@@ -55,7 +93,7 @@ Let's add validation to ensure configuration values are correct:
 - Validation occurs **after all sources are merged**
 - If validation fails, ``cfg.load()`` raises ``ValidationError``
 
-Step 2: Validation with Multiple Sources
+Step 3: Validation with Multiple Sources
 ------------------------------------------
 
 Validation uses the **final merged values**, not just defaults:
@@ -64,25 +102,24 @@ Validation uses the **final merged values**, not just defaults:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
    from varlord.validators import validate_port, ValidationError
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = 8000  # Valid default
+       port: int = field(default=8000, metadata={"optional": True})  # Valid default
 
        def __post_init__(self):
            validate_port(self.port)
 
    # Set invalid port in environment
-   os.environ["APP_PORT"] = "70000"  # Invalid (too large)
+   os.environ["PORT"] = "70000"  # Invalid (too large)
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),
        ],
    )
 
@@ -104,7 +141,7 @@ Validation uses the **final merged values**, not just defaults:
 **Important**: Even though the default value (8000) is valid, validation fails
 because the final merged value (70000 from env) is invalid.
 
-Step 3: Using Multiple Validators
+Step 4: Using Multiple Validators
 -----------------------------------
 
 You can use multiple validators for a single field:
@@ -112,7 +149,7 @@ You can use multiple validators for a single field:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
    from varlord.validators import (
        validate_email,
@@ -123,9 +160,9 @@ You can use multiple validators for a single field:
 
    @dataclass(frozen=True)
    class AppConfig:
-       admin_email: str = "admin@example.com"
-       api_url: str = "https://api.example.com"
-       api_key: str = ""
+       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
+       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
+       api_key: str = field(default="", metadata={"optional": True})
 
        def __post_init__(self):
            validate_email(self.admin_email)
@@ -135,7 +172,7 @@ You can use multiple validators for a single field:
 
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],
    )
 
    try:
@@ -157,13 +194,12 @@ You can use multiple validators for a single field:
    import os
 
    # Provide valid api_key from environment
-   os.environ["APP_API_KEY"] = "a" * 32  # 32 characters
+   os.environ["API_KEY"] = "a" * 32  # 32 characters
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),
        ],
    )
 
@@ -176,7 +212,7 @@ You can use multiple validators for a single field:
 
    API Key length: 32
 
-Step 4: Validating Nested Configuration
+Step 5: Validating Nested Configuration
 ----------------------------------------
 
 Each nested dataclass can have its own validation:
@@ -185,13 +221,13 @@ Each nested dataclass can have its own validation:
    :linenos:
 
    from dataclasses import dataclass, field
-   from varlord import Config, sources
+   from varlord import Config
    from varlord.validators import validate_port, validate_not_empty
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -199,9 +235,9 @@ Each nested dataclass can have its own validation:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
        def __post_init__(self):
            validate_port(self.port)
@@ -210,7 +246,7 @@ Each nested dataclass can have its own validation:
 
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],
    )
 
    app = cfg.load()
@@ -230,7 +266,7 @@ Each nested dataclass can have its own validation:
 - Parent's ``__post_init__`` is called after nested objects are validated
 - You can add cross-field validation in the parent's ``__post_init__``
 
-Step 5: Cross-Field Validation
+Step 6: Cross-Field Validation
 -------------------------------
 
 You can validate relationships between fields:
@@ -238,14 +274,14 @@ You can validate relationships between fields:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
    from varlord.validators import validate_port, ValidationError
 
    @dataclass(frozen=True)
    class AppConfig:
-       app_port: int = 8000
-       db_port: int = 5432
+       app_port: int = field(default=8000, metadata={"optional": True})
+       db_port: int = field(default=8000, metadata={"optional": True})  # Same as app_port - will conflict!
 
        def __post_init__(self):
            validate_port(self.app_port)
@@ -262,49 +298,7 @@ You can validate relationships between fields:
    # This will fail - ports conflict
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
-   )
-
-   try:
-       app = cfg.load()
-   except ValidationError as e:
-       print(f"Validation failed: {e.message}")
-
-**Expected Output**:
-
-.. code-block:: text
-
-   Validation failed: App port conflicts with DB port 5432
-
-Wait, that's not right! Let's check the default values again. Actually, the
-defaults are 8000 and 5432, so they don't conflict. Let me fix the example:
-
-.. code-block:: python
-   :linenos:
-
-   from dataclasses import dataclass
-   from varlord import Config, sources
-   from varlord.validators import validate_port, ValidationError
-
-   @dataclass(frozen=True)
-   class AppConfig:
-       app_port: int = 8000
-       db_port: int = 8000  # Same as app_port - will conflict!
-
-       def __post_init__(self):
-           validate_port(self.app_port)
-           validate_port(self.db_port)
-
-           if self.app_port == self.db_port:
-               raise ValidationError(
-                   "app_port",
-                   self.app_port,
-                   f"App port conflicts with DB port {self.db_port}"
-               )
-
-   cfg = Config(
-       model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],
    )
 
    try:
@@ -318,7 +312,7 @@ defaults are 8000 and 5432, so they don't conflict. Let me fix the example:
 
    Validation failed: App port conflicts with DB port 8000
 
-Step 6: Custom Validators
+Step 7: Custom Validators
 --------------------------
 
 You can create custom validation functions:
@@ -326,8 +320,8 @@ You can create custom validation functions:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
    from varlord.validators import ValidationError
 
    def validate_api_key_format(value: str) -> None:
@@ -347,7 +341,7 @@ You can create custom validation functions:
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = ""
+       api_key: str = field(default="", metadata={"optional": True})
 
        def __post_init__(self):
            validate_api_key_format(self.api_key)
@@ -355,7 +349,7 @@ You can create custom validation functions:
    # This will fail with empty default
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],
    )
 
    try:
@@ -369,7 +363,7 @@ You can create custom validation functions:
 
    Validation failed: API key must start with 'sk-'
 
-Step 7: Complete Example
+Step 8: Complete Example
 ------------------------
 
 Here's a complete example with comprehensive validation:
@@ -392,8 +386,8 @@ Here's a complete example with comprehensive validation:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -401,12 +395,12 @@ Here's a complete example with comprehensive validation:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       admin_email: str = "admin@example.com"
-       api_url: str = "https://api.example.com"
-       api_key: str = ""
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
+       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
+       api_key: str = field(default="", metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -425,13 +419,12 @@ Here's a complete example with comprehensive validation:
 
    def main():
        # Provide required values from environment
-       os.environ["APP_API_KEY"] = "a" * 32
+       os.environ["API_KEY"] = "a" * 32
 
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Defaults(model=AppConfig),
-               sources.Env(prefix="APP_"),
+               sources.Env(),
            ],
        )
 
@@ -484,7 +477,21 @@ Common Pitfalls
 Ensure at least one source provides valid values, or use ``Optional`` for
 fields that may not always be set.
 
-**Pitfall 2: Not handling ValidationError**
+**Pitfall 3: Not handling RequiredFieldError**
+
+.. code-block:: python
+   :emphasize-lines: 1
+
+   @dataclass(frozen=True)
+   class AppConfig:
+       api_key: str = field(metadata={"required": True})
+
+   app = cfg.load()  # May raise RequiredFieldError if api_key not provided
+   print(app.api_key)  # This line won't execute if validation fails
+
+**Solution**: Either provide the required field via a source, or use ``cfg.load(validate=False)`` to skip validation, or wrap in try-except to handle ``RequiredFieldError``.
+
+**Pitfall 4: Not handling ValidationError**
 
 .. code-block:: python
    :emphasize-lines: 1
@@ -495,7 +502,7 @@ fields that may not always be set.
 **Solution**: Always wrap ``cfg.load()`` in try-except to handle validation
 errors gracefully.
 
-**Pitfall 3: Validating nested objects manually**
+**Pitfall 5: Validating nested objects manually**
 
 .. code-block:: python
    :emphasize-lines: 7-8
@@ -515,10 +522,13 @@ in the parent if you need cross-field validation.
 Best Practices
 --------------
 
-1. **Validate all required fields**: Use validators to ensure data integrity
-2. **Provide helpful error messages**: Custom validators should explain what's wrong
-3. **Validate after merge**: Remember validation uses final merged values
-4. **Use built-in validators when possible**: They're tested and well-documented
+1. **Explicitly mark all fields**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
+2. **Validate required fields**: Use ``Config.validate()`` or ``cfg.load(validate=True)`` to ensure required fields are provided
+3. **Validate field values**: Use validators in ``__post_init__`` to ensure data integrity
+4. **Provide helpful error messages**: Custom validators should explain what's wrong
+5. **Validate after merge**: Remember validation uses final merged values
+6. **Use built-in validators when possible**: They're tested and well-documented
+7. **Add field descriptions**: Use ``metadata={"description": "..."}`` for better documentation
 
 Next Steps
 ----------

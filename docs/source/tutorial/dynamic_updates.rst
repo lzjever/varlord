@@ -21,17 +21,17 @@ Step 1: Basic ConfigStore Usage
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
 
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],  # Defaults are automatically applied
    )
 
    # Load as store (supports dynamic updates)
@@ -41,8 +41,8 @@ Step 1: Basic ConfigStore Usage
    app = store.get()
    print(f"Host: {app.host}, Port: {app.port}")
 
-   # Or use attribute access
-   print(f"Host: {store.host}, Port: {store.port}")
+   # Access via store.get() (store.host is not supported)
+   print(f"Host: {store.get().host}, Port: {store.get().port}")
 
 **Expected Output**:
 
@@ -54,8 +54,8 @@ Step 1: Basic ConfigStore Usage
 **Key Points**:
 
 - ``load_store()`` returns a ``ConfigStore`` instance
-- ``store.get()`` returns the current configuration
-- You can also access fields directly: ``store.host``
+- ``store.get()`` returns the current configuration model instance
+- Access fields via ``store.get().host``, not ``store.host``
 
 Step 2: Manual Reload
 ----------------------
@@ -66,34 +66,33 @@ You can manually reload configuration:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = 8000
+       port: int = field(default=8000, metadata={"optional": True})
 
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Defaults applied automatically
        ],
    )
 
    store = cfg.load_store()
 
    # Initial value
-   print(f"Initial port: {store.port}")
+   print(f"Initial port: {store.get().port}")
 
-   # Change environment variable
-   os.environ["APP_PORT"] = "9000"
+   # Change environment variable (no prefix needed)
+   os.environ["PORT"] = "9000"
 
    # Manually reload
    store.reload()
 
    # New value
-   print(f"Updated port: {store.port}")
+   print(f"Updated port: {store.get().port}")
 
 **Expected Output**:
 
@@ -114,12 +113,12 @@ You can subscribe to configuration changes:
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = 8000
+       port: int = field(default=8000, metadata={"optional": True})
 
    def on_config_change(new_config, diff):
        print(f"Configuration changed!")
@@ -131,16 +130,15 @@ You can subscribe to configuration changes:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Defaults applied automatically
        ],
    )
 
    store = cfg.load_store()
    store.subscribe(on_config_change)
 
-   # Change configuration
-   os.environ["APP_PORT"] = "9000"
+   # Change configuration (no prefix needed)
+   os.environ["PORT"] = "9000"
    store.reload()  # Triggers callback
 
 **Expected Output**:
@@ -167,13 +165,13 @@ If you have etcd installed, you can enable automatic watching:
 .. code-block:: python
    :linenos:
 
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = 8000
-       timeout: int = 30
+       port: int = field(default=8000, metadata={"optional": True})
+       timeout: int = field(default=30, metadata={"optional": True})
 
    def on_config_change(new_config, diff):
        print(f"Configuration updated from etcd!")
@@ -183,13 +181,12 @@ If you have etcd installed, you can enable automatic watching:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            sources.Etcd(
                host="127.0.0.1",
                port=2379,
                prefix="/app/",
                watch=True,  # Enable automatic watching
-           ),
+           ),  # Defaults applied automatically
        ],
    )
 
@@ -220,16 +217,16 @@ Step 5: Thread-Safe Access
 
    import threading
    import time
-   from dataclasses import dataclass
-   from varlord import Config, sources
+   from dataclasses import dataclass, field
+   from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       counter: int = 0
+       counter: int = field(default=0, metadata={"optional": True})
 
    cfg = Config(
        model=AppConfig,
-       sources=[sources.Defaults(model=AppConfig)],
+       sources=[],  # Defaults applied automatically
    )
 
    store = cfg.load_store()
@@ -246,7 +243,7 @@ Step 5: Thread-Safe Access
 
    # Main thread can also access safely
    for i in range(5):
-       print(f"Main: counter = {store.counter}")
+       print(f"Main: counter = {store.get().counter}")
        time.sleep(0.2)
 
    thread.join()
@@ -279,14 +276,14 @@ Here's a complete example with subscriptions and manual reload:
 
    import os
    import time
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       debug: bool = False
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
 
    def on_config_change(new_config, diff):
        print(f"\n[Callback] Configuration changed:")
@@ -302,8 +299,7 @@ Here's a complete example with subscriptions and manual reload:
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Defaults(model=AppConfig),
-               sources.Env(prefix="APP_"),
+               sources.Env(),  # Defaults applied automatically
            ],
        )
 
@@ -311,23 +307,25 @@ Here's a complete example with subscriptions and manual reload:
        store.subscribe(on_config_change)
 
        print("Initial configuration:")
-       print(f"  {store.host}:{store.port} (debug={store.debug})")
+       config = store.get()
+       print(f"  {config.host}:{config.port} (debug={config.debug})")
 
        # Simulate configuration changes
        print("\n--- Changing port ---")
-       os.environ["APP_PORT"] = "9000"
+       os.environ["PORT"] = "9000"
        store.reload()
 
        time.sleep(0.5)
 
        print("\n--- Changing host ---")
-       os.environ["APP_HOST"] = "192.168.1.1"
+       os.environ["HOST"] = "192.168.1.1"
        store.reload()
 
        time.sleep(0.5)
 
        print("\n--- Final configuration ---")
-       print(f"  {store.host}:{store.port} (debug={store.debug})")
+       config = store.get()
+       print(f"  {config.host}:{config.port} (debug={config.debug})")
 
    if __name__ == "__main__":
        main()
@@ -364,9 +362,9 @@ Common Pitfalls
 
    store = cfg.load_store()
    # Change environment variable
-   os.environ["APP_PORT"] = "9000"
+   os.environ["PORT"] = "9000"
    # Configuration won't update automatically!
-   print(store.port)  # Still 8000
+   print(store.get().port)  # Still 8000
 
 **Solution**: Environment variables and CLI arguments don't support automatic
 watching. Use ``store.reload()`` to manually refresh, or use etcd for

@@ -23,19 +23,19 @@ Sometimes you need different priority orders for different keys. Use
    :linenos:
 
    import os
-   from dataclasses import dataclass
+   from dataclasses import dataclass, field
    from varlord import Config, sources, PriorityPolicy
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       api_key: str = "default-key"
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       api_key: str = field(default="default-key", metadata={"optional": True})
 
-   # Set environment variables
-   os.environ["APP_HOST"] = "env-host"
-   os.environ["APP_PORT"] = "9000"
-   os.environ["APP_API_KEY"] = "env-key"
+   # Set environment variables (no prefix needed)
+   os.environ["HOST"] = "env-host"
+   os.environ["PORT"] = "9000"
+   os.environ["API_KEY"] = "env-key"
 
    # Define priority policy
    policy = PriorityPolicy(
@@ -49,8 +49,7 @@ Sometimes you need different priority orders for different keys. Use
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Defaults applied automatically
        ],
        policy=policy,
    )
@@ -112,8 +111,8 @@ You can create custom sources by extending the ``Source`` base class:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
 
    # Create JSON file
    import tempfile
@@ -125,8 +124,7 @@ You can create custom sources by extending the ``Source`` base class:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           JSONFileSource(json_path),
+           JSONFileSource(json_path),  # Defaults applied automatically
        ],
    )
 
@@ -222,18 +220,18 @@ Here are some best practices for complex scenarios:
 
    @dataclass(frozen=True)
    class DatabaseConfig:
-       host: str = "localhost"
-       port: int = 5432
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
 
    @dataclass(frozen=True)
    class CacheConfig:
-       host: str = "localhost"
-       port: int = 6379
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=6379, metadata={"optional": True})
 
    @dataclass(frozen=True)
    class AppConfig:
-       db: DatabaseConfig = field(default_factory=lambda: DatabaseConfig())
-       cache: CacheConfig = field(default_factory=lambda: CacheConfig())
+       db: DatabaseConfig = field(default_factory=lambda: DatabaseConfig(), metadata={"optional": True})
+       cache: CacheConfig = field(default_factory=lambda: CacheConfig(), metadata={"optional": True})
 
 **2. Use Environment-Specific Defaults**
 
@@ -244,19 +242,20 @@ Here are some best practices for complex scenarios:
 
    @dataclass(frozen=True)
    class AppConfig:
-       debug: bool = os.getenv("ENV") != "production"
-       log_level: str = "DEBUG" if os.getenv("ENV") != "production" else "INFO"
+       debug: bool = field(default=os.getenv("ENV") != "production", metadata={"optional": True})
+       log_level: str = field(default="DEBUG" if os.getenv("ENV") != "production" else "INFO", metadata={"optional": True})
 
 **3. Validate Critical Fields**
 
 .. code-block:: python
    :linenos:
 
+   from dataclasses import field
    from varlord.validators import validate_not_empty, validate_port
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = ""
+       api_key: str = field(default="", metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.api_key)  # Fail fast if missing
@@ -277,8 +276,8 @@ Here's a complete example combining multiple advanced features:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = "localhost"
-       port: int = 5432
+       host: str = field(default="localhost", metadata={"optional": True})
+       port: int = field(default=5432, metadata={"optional": True})
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -286,19 +285,19 @@ Here's a complete example combining multiple advanced features:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = "0.0.0.0"
-       port: int = 8000
-       db: DBConfig = field(default_factory=lambda: DBConfig())
+       host: str = field(default="0.0.0.0", metadata={"optional": True})
+       port: int = field(default=8000, metadata={"optional": True})
+       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
 
        def __post_init__(self):
            validate_port(self.port)
 
    def main():
-       # Set environment variables
-       os.environ["APP_HOST"] = "0.0.0.0"
-       os.environ["APP_PORT"] = "9000"
-       os.environ["APP_DB__HOST"] = "db.example.com"
-       os.environ["APP_DB__PORT"] = "3306"
+       # Set environment variables (no prefix needed)
+       os.environ["HOST"] = "0.0.0.0"
+       os.environ["PORT"] = "9000"
+       os.environ["DB__HOST"] = "db.example.com"
+       os.environ["DB__PORT"] = "3306"
 
        # Use PriorityPolicy for fine-grained control
        policy = PriorityPolicy(
@@ -311,8 +310,7 @@ Here's a complete example combining multiple advanced features:
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Defaults(model=AppConfig),
-               sources.Env(prefix="APP_", separator="__"),
+               sources.Env(),  # Defaults applied automatically
            ],
            policy=policy,
        )

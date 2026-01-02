@@ -1,9 +1,14 @@
 """
-Configuration validators.
+Value validators for configuration.
 
-Provides comprehensive validation functions for configuration values.
-Includes validators for numbers, strings, collections, network addresses,
-file paths, and more.
+This module provides validation functions for configuration values:
+- Numeric validators (port, range, positive, etc.)
+- String validators (email, URL, IP, domain, etc.)
+- Collection validators (list length, dict keys, etc.)
+- File/path validators
+- Custom validators
+
+For model definition and structure validation, see varlord.model_validation.
 """
 
 from __future__ import annotations
@@ -790,8 +795,8 @@ def validate_custom(
         raise ValidationError("value", value, message)
 
 
-def validate_config(config: Any, validators: dict[str, list[Callable[[Any], None]]]) -> None:
-    """Validate a configuration object.
+def apply_validators(config: Any, validators: dict[str, list[Callable[[Any], None]]]) -> None:
+    """Apply validators to a configuration object.
 
     Args:
         config: Configuration object (dataclass instance)
@@ -806,7 +811,7 @@ def validate_config(config: Any, validators: dict[str, list[Callable[[Any], None
         ...     port: int = 8000
         ...     host: str = "localhost"
         >>> cfg = Config()
-        >>> validate_config(cfg, {
+        >>> apply_validators(cfg, {
         ...     "port": [lambda v: validate_port(v)],
         ...     "host": [lambda v: validate_not_empty(v)]
         ... })
