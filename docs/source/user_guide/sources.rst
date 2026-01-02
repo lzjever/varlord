@@ -17,12 +17,24 @@ Loads from environment variables, filtered by model fields:
 
 .. code-block:: python
 
-   source = sources.Env(model=AppConfig)  # Model required
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Env(),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model (when using source independently)
+   source = sources.Env()  # Only needed if using source outside Config
    # Only loads environment variables that match model fields
    # HOST -> host, PORT -> port, etc.
    # Converts DB__HOST to db.host (nested keys)
 
-**Important**: The ``prefix`` parameter has been removed. All environment variables are filtered by model fields. Only variables that map to model fields are loaded.
+**Important**: 
+- The ``prefix`` parameter has been removed. All environment variables are filtered by model fields.
+- When used in ``Config``, model is automatically injected - no need to pass ``model`` parameter.
+- Only pass ``model`` explicitly if using the source independently.
 
 CLI Arguments
 -------------
@@ -31,10 +43,19 @@ Loads from command-line arguments, filtered by model fields:
 
 .. code-block:: python
 
-   source = sources.CLI(model=AppConfig)  # Model required (auto-injected by Config)
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.CLI(),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model (when using source independently)
+   source = sources.CLI()  # Only needed if using source outside Config
    # Only parses arguments for model fields
    # Parses --host, --port, --debug, etc.
-   # Uses field metadata for help text and required flags
+   # Uses field metadata for help text and optional flags
 
 DotEnv Files
 ------------
@@ -43,7 +64,16 @@ Loads from `.env` files, filtered by model fields (requires ``varlord[dotenv]``)
 
 .. code-block:: python
 
-   source = sources.DotEnv(".env", model=AppConfig)  # Model required
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.DotEnv(".env"),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model (when using source independently)
+   source = sources.DotEnv(".env")  # Only needed if using source outside Config
    # Only loads variables that match model fields
 
 Etcd
@@ -53,12 +83,27 @@ Loads from etcd with optional watch support, filtered by model fields (requires 
 
 .. code-block:: python
 
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Etcd(
+               host="127.0.0.1",
+               port=2379,
+               prefix="/app/",
+               watch=True,  # Enable dynamic updates
+               # Model auto-injected, no need to pass model parameter
+           ),
+       ],
+   )
+
+   # Advanced: Explicit model (when using source independently)
    source = sources.Etcd(
        host="127.0.0.1",
        port=2379,
        prefix="/app/",
-       watch=True,  # Enable dynamic updates
-       model=AppConfig,  # Model required (auto-injected by Config)
+       watch=True,
+       model=AppConfig,  # Only needed if using source outside Config
    )
    # Only loads keys that match model fields
 

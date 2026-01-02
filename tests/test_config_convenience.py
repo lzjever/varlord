@@ -9,9 +9,9 @@ from varlord import Config, sources
 
 @dataclass(frozen=True)
 class AppTestConfig:
-    host: str = field(default="127.0.0.1", metadata={"optional": True})
-    port: int = field(default=8000, metadata={"optional": True})
-    debug: bool = field(default=False, metadata={"optional": True})
+    host: str = field(default="127.0.0.1", )
+    port: int = field(default=8000, )
+    debug: bool = field(default=False, )
 
 
 def test_auto_inject_model_to_sources():

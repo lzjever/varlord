@@ -11,8 +11,8 @@ def test_config_store_basic():
 
     @dataclass
     class AppConfig:
-        host: str = field(default="localhost", metadata={"optional": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field(default="localhost", )
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,
@@ -32,8 +32,8 @@ def test_config_store_with_sources():
 
     @dataclass
     class AppConfig:
-        host: str = field(default="localhost", metadata={"optional": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field(default="localhost", )
+        port: int = field(default=8000, )
 
     import os
 
@@ -60,8 +60,8 @@ def test_config_store_auto_defaults():
 
     @dataclass
     class AppConfig:
-        host: str = field(default="localhost", metadata={"optional": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field(default="localhost", )
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,

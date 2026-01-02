@@ -28,9 +28,9 @@ Sometimes you need different priority orders for different keys. Use
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       api_key: str = field(default="default-key", metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       api_key: str = field(default="default-key")
 
    # Set environment variables (no prefix needed)
    os.environ["HOST"] = "env-host"
@@ -111,8 +111,8 @@ You can create custom sources by extending the ``Source`` base class:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
 
    # Create JSON file
    import tempfile
@@ -220,18 +220,18 @@ Here are some best practices for complex scenarios:
 
    @dataclass(frozen=True)
    class DatabaseConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
 
    @dataclass(frozen=True)
    class CacheConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=6379, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=6379)
 
    @dataclass(frozen=True)
    class AppConfig:
-       db: DatabaseConfig = field(default_factory=lambda: DatabaseConfig(), metadata={"optional": True})
-       cache: CacheConfig = field(default_factory=lambda: CacheConfig(), metadata={"optional": True})
+       db: DatabaseConfig = field(default_factory=lambda: DatabaseConfig())
+       cache: CacheConfig = field(default_factory=lambda: CacheConfig())
 
 **2. Use Environment-Specific Defaults**
 
@@ -242,8 +242,8 @@ Here are some best practices for complex scenarios:
 
    @dataclass(frozen=True)
    class AppConfig:
-       debug: bool = field(default=os.getenv("ENV") != "production", metadata={"optional": True})
-       log_level: str = field(default="DEBUG" if os.getenv("ENV") != "production" else "INFO", metadata={"optional": True})
+       debug: bool = field(default=os.getenv("ENV") != "production")
+       log_level: str = field(default="DEBUG" if os.getenv("ENV") != "production" else "INFO")
 
 **3. Validate Critical Fields**
 
@@ -255,7 +255,7 @@ Here are some best practices for complex scenarios:
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = field(default="", metadata={"optional": True})
+       api_key: str = field(default="")
 
        def __post_init__(self):
            validate_not_empty(self.api_key)  # Fail fast if missing
@@ -276,8 +276,8 @@ Here's a complete example combining multiple advanced features:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -285,9 +285,9 @@ Here's a complete example combining multiple advanced features:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
        def __post_init__(self):
            validate_port(self.port)
@@ -310,7 +310,7 @@ Here's a complete example combining multiple advanced features:
        cfg = Config(
            model=AppConfig,
            sources=[
-               sources.Env(),  # Defaults applied automatically
+               sources.Env(),  # Model defaults applied automatically
            ],
            policy=policy,
        )

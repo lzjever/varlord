@@ -12,7 +12,7 @@ def test_cli_format_help_basic():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True, "description": "Server host"})
+        host: str = field(metadata={"description": "Server host"})
         port: int = field(default=8000, metadata={"optional": True, "description": "Server port"})
 
     cli = CLI(model=AppConfig)
@@ -70,8 +70,8 @@ def test_cli_get_field_help():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True, "description": "API key"})
-        host: str = field(metadata={"required": True, "help": "Server host"})
+        api_key: str = field(metadata={"description": "API key"})
+        host: str = field(metadata={"help": "Server host"})
 
     cli = CLI(model=AppConfig)
 
@@ -89,7 +89,7 @@ def test_config_format_cli_help():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True, "description": "API key"})
+        api_key: str = field(metadata={"description": "API key"})
 
     cfg = Config(
         model=AppConfig,
@@ -116,7 +116,7 @@ def test_config_format_cli_help_no_cli_source():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()
 
     cfg = Config(
         model=AppConfig,
@@ -132,11 +132,11 @@ def test_cli_format_help_nested_fields():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True, "description": "Database host"})
+        host: str = field(metadata={"description": "Database host"})
 
     @dataclass
     class AppConfig:
-        db: DBConfig = field(metadata={"required": True})
+        db: DBConfig = field()
 
     cli = CLI(model=AppConfig)
     help_text = cli.format_help(prog="test.py")

@@ -26,15 +26,15 @@ Let's create a configuration with nested structures:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       database: str = field(default="mydb", metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       database: str = field(default="mydb")
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default=None, metadata={"optional": True})  # Nested configuration
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())  # Nested configuration
 
    # Initialize with defaults (automatic)
    cfg = Config(
@@ -44,18 +44,14 @@ Let's create a configuration with nested structures:
 
    app = cfg.load()
    print(f"App: {app.host}:{app.port}")
-   if app.db:
-       print(f"DB: {app.db.host}:{app.db.port}/{app.db.database}")
+   print(f"DB: {app.db.host}:{app.db.port}/{app.db.database}")
 
 **Expected Output**:
 
 .. code-block:: text
 
    App: 0.0.0.0:8000
-   DB: None
-
-**Note**: Since ``db`` defaults to ``None``, we need to provide values from
-other sources or use a default factory.
+   DB: localhost:5432/mydb
 
 Step 2: Using Default Factory for Nested Objects
 -------------------------------------------------
@@ -70,15 +66,15 @@ To provide default nested objects, use ``field(default_factory=...)``:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       database: str = field(default="mydb", metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       database: str = field(default="mydb")
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
    cfg = Config(
        model=AppConfig,
@@ -116,15 +112,15 @@ keys:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       database: str = field(default="mydb", metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       database: str = field(default="mydb")
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
    # Set nested environment variables (no prefix needed - filtered by model)
    os.environ["DB__HOST"] = "db.example.com"
@@ -172,14 +168,14 @@ Command-line arguments use hyphens for nested keys:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
    # Command-line arguments for nested fields
    sys.argv = [
@@ -225,19 +221,19 @@ You can nest multiple levels:
 
    @dataclass(frozen=True)
    class CacheConfig:
-       enabled: bool = field(default=False, metadata={"optional": True})
-       ttl: int = field(default=3600, metadata={"optional": True})
+       enabled: bool = field(default=False)
+       ttl: int = field(default=3600)
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       cache: CacheConfig = field(default_factory=lambda: CacheConfig(), metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       cache: CacheConfig = field(default_factory=lambda: CacheConfig())
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
    # Set deeply nested environment variables (no prefix needed)
    os.environ["DB__CACHE__ENABLED"] = "true"
@@ -282,21 +278,21 @@ Here's a complete example with multiple nested structures:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       database: str = field(default="mydb", metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       database: str = field(default="mydb")
 
    @dataclass(frozen=True)
    class RedisConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=6379, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=6379)
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
-       redis: RedisConfig = field(default_factory=lambda: RedisConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
+       redis: RedisConfig = field(default_factory=lambda: RedisConfig())
 
    def main():
        # Set environment variables (no prefix needed)

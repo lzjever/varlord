@@ -18,7 +18,11 @@ This ensures that validation works on the **final merged values**, not just defa
 
 **Required Field Validation**:
 
-All fields must explicitly specify ``metadata={"required": True}`` or ``metadata={"optional": True}``.
+Fields are automatically determined as required/optional:
+- Fields **without defaults** and **not Optional[T]** are **required**
+- Fields **with Optional[T]** type annotation are **optional**
+- Fields **with defaults** (or ``default_factory``) are **optional**
+
 Required fields are validated before ``__post_init__`` is called.
 
 Example:
@@ -32,7 +36,7 @@ Example:
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = field(metadata={"required": True})  # Required - no default
+       api_key: str = field()  # Required - no default
 
    # This will FAIL - api_key not provided
    cfg = Config(model=AppConfig, sources=[])
@@ -370,11 +374,11 @@ Here's a complete example using multiple validators:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
-       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
-       api_key: str = field(default="", metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       admin_email: str = field(default="admin@example.com")
+       api_url: str = field(default="https://api.example.com")
+       api_key: str = field(default="")
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -436,9 +440,9 @@ method. Validation is performed automatically when nested objects are created.
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
-       max_connections: int = field(default=10, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+       max_connections: int = field(default=10)
 
        def __post_init__(self):
            """Validate database configuration."""
@@ -448,9 +452,9 @@ method. Validation is performed automatically when nested objects are created.
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
        def __post_init__(self):
            """Validate application configuration."""

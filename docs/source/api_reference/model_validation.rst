@@ -12,7 +12,12 @@ Functions
 ---------
 
 **validate_model_definition**
-   Validates that all fields in a dataclass model have explicit required/optional metadata.
+   Validates model definition (currently no validation errors - Optional[T] types are supported).
+
+   Fields are automatically determined as required/optional:
+   - Fields **without defaults** and **not Optional[T]** are **required**
+   - Fields **with Optional[T]** type annotation are **optional**
+   - Fields **with defaults** (or ``default_factory``) are **optional**
 
    Example:
 
@@ -20,13 +25,15 @@ Functions
 
       from varlord.model_validation import validate_model_definition
       from dataclasses import dataclass, field
+      from typing import Optional
 
       @dataclass
       class Config:
-          api_key: str = field(metadata={"required": True})  # OK
-          host: str = field()  # Missing metadata - will raise ModelDefinitionError
+          api_key: str = field()  # Required (no default, not Optional)
+          timeout: Optional[int] = field()  # Optional (Optional type)
+          host: str = field(default="localhost")  # Optional (has default)
 
-      validate_model_definition(Config)  # Raises ModelDefinitionError
+      validate_model_definition(Config)  # OK
 
 **validate_config**
    Validates that all required fields exist in a configuration dictionary.
@@ -40,7 +47,7 @@ Functions
 
       @dataclass
       class Config:
-          api_key: str = field(metadata={"required": True})
+          api_key: str = field()
 
       config_dict = {}  # Missing api_key
       try:
@@ -55,7 +62,7 @@ Exceptions
    Base exception for all varlord errors.
 
 **ModelDefinitionError**
-   Raised when a field is missing required/optional metadata in the model definition.
+   Raised when model definition is invalid (currently not used - Optional[T] types are supported).
 
 **RequiredFieldError**
    Raised when required fields are missing from the configuration dictionary.

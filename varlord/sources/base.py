@@ -83,7 +83,12 @@ class Source:
 
         Args:
             model: Optional dataclass model for field filtering.
-                  If provided, source will only load fields defined in model.
+                  If None, model will be auto-injected by Config when used in Config.
+                  If provided, this model will be used (allows override).
+
+        Note:
+            - Recommended: Omit model parameter when used in Config (auto-injected).
+            - Advanced: Provide model explicitly if using source independently or need different model.
         """
         self._model = model
 

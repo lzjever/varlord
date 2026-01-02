@@ -26,8 +26,8 @@ Step 1: Basic ConfigStore Usage
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
 
    cfg = Config(
        model=AppConfig,
@@ -71,7 +71,7 @@ You can manually reload configuration:
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = field(default=8000, metadata={"optional": True})
+       port: int = field(default=8000)
 
    cfg = Config(
        model=AppConfig,
@@ -118,7 +118,7 @@ You can subscribe to configuration changes:
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = field(default=8000, metadata={"optional": True})
+       port: int = field(default=8000)
 
    def on_config_change(new_config, diff):
        print(f"Configuration changed!")
@@ -170,8 +170,8 @@ If you have etcd installed, you can enable automatic watching:
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = field(default=8000, metadata={"optional": True})
-       timeout: int = field(default=30, metadata={"optional": True})
+       port: int = field(default=8000)
+       timeout: int = field(default=30)
 
    def on_config_change(new_config, diff):
        print(f"Configuration updated from etcd!")
@@ -222,7 +222,7 @@ Step 5: Thread-Safe Access
 
    @dataclass(frozen=True)
    class AppConfig:
-       counter: int = field(default=0, metadata={"optional": True})
+       counter: int = field(default=0)
 
    cfg = Config(
        model=AppConfig,
@@ -281,9 +281,9 @@ Here's a complete example with subscriptions and manual reload:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
 
    def on_config_change(new_config, diff):
        print(f"\n[Callback] Configuration changed:")

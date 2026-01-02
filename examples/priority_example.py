@@ -26,12 +26,13 @@ def example_1_reorder_sources():
     print("=== Example 1: Reorder Sources ===")
 
     # Priority is determined by sources order: later sources override earlier ones
+    # Model defaults are automatically applied first (lowest priority)
+    # Model is auto-injected to all sources by Config
     cfg = Config(
         model=AppConfig,
         sources=[
-            sources.Defaults(model=AppConfig),  # Lowest priority
-            sources.Env(prefix="APP_"),
-            sources.CLI(),  # Highest priority (last)
+            sources.Env(),  # Overrides defaults - model auto-injected
+            sources.CLI(),  # Highest priority (last) - model auto-injected
         ],
     )
 
@@ -44,12 +45,12 @@ def example_2_priority_policy():
     print("\n=== Example 2: PriorityPolicy ===")
 
     # Use when you need different priority rules for different keys
+    # Model is auto-injected to all sources by Config
     cfg = Config(
         model=AppConfig,
         sources=[
-            sources.Defaults(model=AppConfig),
-            sources.Env(prefix="APP_"),
-            sources.CLI(),
+            sources.Env(),  # Model defaults applied automatically, model auto-injected
+            sources.CLI(),  # Model auto-injected
         ],
         policy=PriorityPolicy(
             default=["defaults", "env", "cli"],

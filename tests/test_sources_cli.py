@@ -9,9 +9,9 @@ from varlord.sources.cli import CLI
 
 @dataclass
 class CLITestConfig:
-    host: str = field(metadata={"required": True, "description": "Server host"})
+    host: str = field(metadata={"description": "Server host"})
     port: int = field(default=8000, metadata={"optional": True, "help": "Server port"})
-    debug: bool = field(default=False, metadata={"optional": True})
+    debug: bool = field(default=False, )
 
 
 def test_cli_basic():
@@ -72,13 +72,13 @@ def test_cli_nested_fields():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        db_host: str = field(metadata={"required": True})  # Flat field, not nested
-        db_port: int = field(default=5432, metadata={"optional": True})
+        db_host: str = field()  # Flat field, not nested
+        db_port: int = field(default=5432, )
 
     source = CLI(model=AppConfig, argv=["--db-host", "localhost", "--db-port", "5432"])
     config = source.load()

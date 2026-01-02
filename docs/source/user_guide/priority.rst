@@ -13,8 +13,8 @@ Priority is determined by the order of sources in the list. **Later sources over
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Env(),  # Model defaults applied first (lowest priority)
-           sources.CLI(),  # Highest priority (last)
+           sources.Env(),  # Model auto-injected, defaults applied first (lowest priority)
+           sources.CLI(),  # Model auto-injected, highest priority (last)
        ],
    )
    

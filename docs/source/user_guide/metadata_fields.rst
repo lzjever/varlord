@@ -4,13 +4,15 @@ Metadata Fields
 Varlord supports several metadata fields in dataclass field definitions to provide
 additional information about configuration fields.
 
-Required Metadata Fields
-------------------------
+Field Required/Optional Status
+------------------------------
 
-These fields **must** be specified (exactly one):
+Fields are automatically determined by their default values:
 
-- ``required: bool`` - Set to ``True`` if the field is required and must be provided
-- ``optional: bool`` - Set to ``True`` if the field is optional and may have a default
+- **Fields without defaults** → **Required**
+- **Fields with defaults** (or ``default_factory``) → **Optional**
+
+No ``metadata={"optional": True}`` needed - defaults determine optional status.
 
 **Example**:
 
@@ -20,8 +22,8 @@ These fields **must** be specified (exactly one):
 
    @dataclass
    class AppConfig:
-       api_key: str = field(metadata={"required": True})
-       host: str = field(default="localhost", metadata={"optional": True})
+       api_key: str = field()  # Required (no default)
+       host: str = field(default="localhost")  # Optional (has default)
 
 Optional Metadata Fields
 ------------------------
@@ -41,15 +43,14 @@ These fields are optional but recommended for better user experience:
    class AppConfig:
        api_key: str = field(
            metadata={
-               "required": True,
                "description": "API key for authentication",
                "help": "Required API key for accessing the service"
            }
-       )
+       )  # Required by default
        host: str = field(
            default="127.0.0.1",
            metadata={
-               "optional": True,
+               
                "description": "Server host address",
                "help": "Server host (default: 127.0.0.1)"
            }
@@ -73,30 +74,27 @@ Complete Example
 
    @dataclass(frozen=True)
    class AppConfig:
-       # Required field with description
+       # Required field with description (no default)
        api_key: str = field(
            metadata={
-               "required": True,
                "description": "API key for authentication",
                "help": "Required API key"
            }
        )
        
-       # Optional field with description and help
+       # Optional field with description and help (has default)
        host: str = field(
            default="127.0.0.1",
            metadata={
-               "optional": True,
                "description": "Server host address",
                "help": "Server host (default: 127.0.0.1)"
            }
        )
        
-       # Optional field with only description
+       # Optional field with only description (has default)
        port: int = field(
            default=8000,
            metadata={
-               "optional": True,
                "description": "Server port number"
            }
        )

@@ -16,22 +16,24 @@ By the end of this tutorial, you'll be able to:
 - Understand when validation occurs
 - Handle validation errors
 
-Step 1: Explicit Required/Optional Fields
------------------------------------------
+Step 1: Required/Optional Fields
+---------------------------------
 
-All fields must explicitly specify whether they are required or optional:
+Fields are automatically determined as required/optional:
 
 .. code-block:: python
    :linenos:
 
    from dataclasses import dataclass, field
+   from typing import Optional
    from varlord import Config
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       api_key: str = field(metadata={"required": True})  # Required - no default
+       host: str = field(default="0.0.0.0")  # Optional (has default)
+       port: int = field(default=8000)  # Optional (has default)
+       api_key: str = field()  # Required (no default, not Optional)
+       timeout: Optional[int] = field()  # Optional (Optional type)
 
    # This will raise RequiredFieldError if api_key is not provided
    from varlord.model_validation import RequiredFieldError
@@ -48,7 +50,9 @@ All fields must explicitly specify whether they are required or optional:
 
 **Key Points**:
 
-- All fields must have ``metadata={"required": True}`` or ``metadata={"optional": True}``
+- Fields **without defaults** and **not Optional[T]** are **required**
+- Fields **with Optional[T]** type annotation are **optional**
+- Fields **with defaults** (or ``default_factory``) are **optional**
 - Required fields must be provided by at least one source
 - Empty strings and empty collections are considered valid (presence is checked, not emptiness)
 
@@ -66,8 +70,8 @@ Let's add validation to ensure configuration values are correct:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -108,7 +112,7 @@ Validation uses the **final merged values**, not just defaults:
 
    @dataclass(frozen=True)
    class AppConfig:
-       port: int = field(default=8000, metadata={"optional": True})  # Valid default
+       port: int = field(default=8000)  # Valid default
 
        def __post_init__(self):
            validate_port(self.port)
@@ -160,9 +164,9 @@ You can use multiple validators for a single field:
 
    @dataclass(frozen=True)
    class AppConfig:
-       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
-       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
-       api_key: str = field(default="", metadata={"optional": True})
+       admin_email: str = field(default="admin@example.com")
+       api_url: str = field(default="https://api.example.com")
+       api_key: str = field(default="")
 
        def __post_init__(self):
            validate_email(self.admin_email)
@@ -226,8 +230,8 @@ Each nested dataclass can have its own validation:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -235,9 +239,9 @@ Each nested dataclass can have its own validation:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
        def __post_init__(self):
            validate_port(self.port)
@@ -280,8 +284,8 @@ You can validate relationships between fields:
 
    @dataclass(frozen=True)
    class AppConfig:
-       app_port: int = field(default=8000, metadata={"optional": True})
-       db_port: int = field(default=8000, metadata={"optional": True})  # Same as app_port - will conflict!
+       app_port: int = field(default=8000)
+       db_port: int = field(default=8000)  # Same as app_port - will conflict!
 
        def __post_init__(self):
            validate_port(self.app_port)
@@ -341,7 +345,7 @@ You can create custom validation functions:
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = field(default="", metadata={"optional": True})
+       api_key: str = field(default="")
 
        def __post_init__(self):
            validate_api_key_format(self.api_key)
@@ -386,8 +390,8 @@ Here's a complete example with comprehensive validation:
 
    @dataclass(frozen=True)
    class DBConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       port: int = field(default=5432, metadata={"optional": True})
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -395,12 +399,12 @@ Here's a complete example with comprehensive validation:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="0.0.0.0", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       admin_email: str = field(default="admin@example.com", metadata={"optional": True})
-       api_url: str = field(default="https://api.example.com", metadata={"optional": True})
-       api_key: str = field(default="", metadata={"optional": True})
-       db: DBConfig = field(default_factory=lambda: DBConfig(), metadata={"optional": True})
+       host: str = field(default="0.0.0.0")
+       port: int = field(default=8000)
+       admin_email: str = field(default="admin@example.com")
+       api_url: str = field(default="https://api.example.com")
+       api_key: str = field(default="")
+       db: DBConfig = field(default_factory=lambda: DBConfig())
 
        def __post_init__(self):
            validate_not_empty(self.host)
@@ -484,7 +488,7 @@ fields that may not always be set.
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: str = field(metadata={"required": True})
+       api_key: str = field()
 
    app = cfg.load()  # May raise RequiredFieldError if api_key not provided
    print(app.api_key)  # This line won't execute if validation fails
@@ -522,7 +526,7 @@ in the parent if you need cross-field validation.
 Best Practices
 --------------
 
-1. **Explicitly mark all fields**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
+1. **Fields are automatically determined**: Use ``Optional[T]`` type annotation or default values for optional fields
 2. **Validate required fields**: Use ``Config.validate()`` or ``cfg.load(validate=True)`` to ensure required fields are provided
 3. **Validate field values**: Use validators in ``__post_init__`` to ensure data integrity
 4. **Provide helpful error messages**: Custom validators should explain what's wrong

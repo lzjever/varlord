@@ -51,9 +51,9 @@ def sample_config_model():
 
     @dataclass(frozen=True)
     class SampleConfig:
-        host: str = field(default="127.0.0.1", metadata={"optional": True})
-        port: int = field(default=8000, metadata={"optional": True})
-        debug: bool = field(default=False, metadata={"optional": True})
-        timeout: float = field(default=30.0, metadata={"optional": True})
+        host: str = field(default="127.0.0.1", )
+        port: int = field(default=8000, )
+        debug: bool = field(default=False, )
+        timeout: float = field(default=30.0, )
 
     return SampleConfig

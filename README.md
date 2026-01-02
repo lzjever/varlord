@@ -55,16 +55,16 @@ from varlord import Config, sources
 
 @dataclass(frozen=True)
 class AppConfig:
-    host: str = field(default="127.0.0.1", metadata={"optional": True})
-    port: int = field(default=8000, metadata={"optional": True})
-    debug: bool = field(default=False, metadata={"optional": True})
+    host: str = field(default="127.0.0.1")  # Optional (has default)
+    port: int = field(default=8000)  # Optional (has default)
+    debug: bool = field(default=False)  # Optional (has default)
 
 # Model defaults are automatically applied - no need for sources.Defaults
-# Sources filter by model fields automatically
+# Model is automatically injected to all sources - no need to pass model parameter
 cfg = Config(
     model=AppConfig,
     sources=[
-        sources.Env(),        # HOST, PORT, DEBUG (filtered by model)
+        sources.Env(),        # HOST, PORT, DEBUG (model auto-injected)
         sources.CLI(),        # --host, --port, --debug (model auto-injected)
     ],
 )
@@ -162,24 +162,29 @@ from varlord.validators import validate_range, validate_regex
 
 @dataclass(frozen=True)
 class AppConfig:
-    port: int = field(default=8000, metadata={"optional": True})
-    host: str = field(default="127.0.0.1", metadata={"optional": True})
+    port: int = field(default=8000)  # Optional (has default)
+    host: str = field(default="127.0.0.1")  # Optional (has default)
 
     def __post_init__(self):
         validate_range(self.port, min=1, max=65535)
         validate_regex(self.host, r'^\d+\.\d+\.\d+\.\d+$')
 ```
 
-**Required Field Validation**: All fields must explicitly specify ``metadata={"required": True}`` or ``metadata={"optional": True}``:
+**Required Field Validation**: Fields are automatically determined as required/optional:
+- Fields **without defaults** and **not Optional[T]** are **required**
+- Fields **with Optional[T]** type annotation are **optional**
+- Fields **with defaults** (or ``default_factory``) are **optional**
 
 ```python
 from dataclasses import dataclass, field
+from typing import Optional
 from varlord.model_validation import RequiredFieldError
 
 @dataclass(frozen=True)
 class AppConfig:
-    api_key: str = field(metadata={"required": True})  # Must be provided
-    host: str = field(default="127.0.0.1", metadata={"optional": True})
+    api_key: str = field()  # Required (no default, not Optional)
+    timeout: Optional[int] = field()  # Optional (Optional type)
+    host: str = field(default="127.0.0.1")  # Optional (has default)
 
 cfg = Config(model=AppConfig, sources=[])
 try:
@@ -222,7 +227,7 @@ Automatic conversion from strings (env vars, CLI) to model field types (int, flo
 
 **Value Validation**: Add validators in your model's `__post_init__` method to validate configuration values.
 
-**Required Field Validation**: All fields must explicitly specify `metadata={"required": True}` or `metadata={"optional": True}`. Required fields are automatically validated before `__post_init__` is called.
+**Required Field Validation**: Fields are automatically determined as required/optional based on type annotation and default values. Required fields are automatically validated before `__post_init__` is called.
 
 ### ConfigStore
 

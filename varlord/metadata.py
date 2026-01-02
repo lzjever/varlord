@@ -51,11 +51,11 @@ def get_all_fields_info(model: Type[Any], prefix: str = "") -> List[FieldInfo]:
     Example:
         >>> @dataclass
         ... class DBConfig:
-        ...     host: str = field(metadata={"required": True})
+        ...     host: str = field()  # Required by default
         >>> @dataclass
         ... class AppConfig:
-        ...     api_key: str = field(metadata={"required": True})
-        ...     db: DBConfig = field(metadata={"required": True})
+        ...     api_key: str = field()  # Required by default
+        ...     db: DBConfig = field()  # Required by default
         >>> fields = get_all_fields_info(AppConfig)
         >>> [f.normalized_key for f in fields]
         ['api_key', 'db.host']
@@ -72,8 +72,6 @@ def get_all_fields_info(model: Type[Any], prefix: str = "") -> List[FieldInfo]:
 
         # Extract metadata
         metadata = field.metadata if hasattr(field, "metadata") else {}
-        required = metadata.get("required", False)
-        optional = metadata.get("optional", False)
         description = metadata.get("description")
         help_text = metadata.get("help")
 
@@ -92,6 +90,22 @@ def get_all_fields_info(model: Type[Any], prefix: str = "") -> List[FieldInfo]:
             and not isinstance(field.default_factory, _MISSING_TYPE)
             else ...
         )
+
+        # Determine required/optional based on type annotation and default value
+        # 1. If type is Optional[T] → optional
+        # 2. If has default or default_factory → optional
+        # 3. Otherwise → required
+        from typing import get_origin, get_args, Union
+        is_optional_type = False
+        origin = get_origin(field.type)
+        if origin is Union:
+            args = get_args(field.type)
+            if type(None) in args:
+                is_optional_type = True
+
+        has_default = default is not ... or default_factory is not ...
+        optional = is_optional_type or has_default
+        required = not optional
 
         # Create FieldInfo
         field_info = FieldInfo(

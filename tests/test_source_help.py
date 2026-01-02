@@ -49,8 +49,8 @@ def test_format_source_help_with_env():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(metadata={"required": True})
+        api_key: str = field()
+        host: str = field()
 
     source_list = [sources.Env(model=Config)]
     missing_fields = ["api_key", "host"]
@@ -67,7 +67,7 @@ def test_format_source_help_with_cli():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()
 
     source_list = [sources.CLI(model=Config)]
     missing_fields = ["api_key"]
@@ -83,7 +83,7 @@ def test_format_source_help_with_dotenv():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()
 
     source_list = [sources.DotEnv(".env", model=Config)]
     missing_fields = ["api_key"]
@@ -99,7 +99,7 @@ def test_format_source_help_multiple_sources():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()
 
     source_list = [
         sources.Env(model=Config),

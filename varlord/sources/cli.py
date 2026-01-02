@@ -34,7 +34,7 @@ class CLI(Source):
     Example:
         >>> @dataclass
         ... class Config:
-        ...     host: str = field(metadata={"required": True})
+        ...     host: str = field()  # Required by default
         >>> # Command line: python app.py --host 0.0.0.0
         >>> source = CLI(model=Config)
         >>> source.load()
@@ -49,10 +49,15 @@ class CLI(Source):
         """Initialize CLI source.
 
         Args:
-            model: Model to filter CLI arguments.
+            model: Optional model to filter CLI arguments.
                   Only arguments that map to model fields will be parsed.
-                  Model is required and will be auto-injected by Config.
+                  If None, model will be auto-injected by Config when used in Config.
+                  If provided, this model will be used (allows override).
             argv: Command-line arguments (default: sys.argv[1:])
+
+        Note:
+            - Recommended: Omit model parameter when used in Config (auto-injected).
+            - Advanced: Provide model explicitly if using source independently.
         """
         super().__init__(model=model)
         self._argv = argv
@@ -73,7 +78,11 @@ class CLI(Source):
             ValueError: If model is not provided
         """
         if not self._model:
-            raise ValueError("CLI source requires model (should be auto-injected by Config)")
+            raise ValueError(
+                "CLI source requires model. "
+                "When used in Config, model is auto-injected. "
+                "When used independently, provide model explicitly: CLI(model=AppConfig)"
+            )
 
         # Get all valid field keys and info from model
         valid_keys = get_all_field_keys(self._model)

@@ -13,8 +13,8 @@ def test_config_validate_independent():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()
+        host: str = field(default="localhost", )
 
     cfg = Config(
         model=AppConfig,
@@ -43,8 +43,8 @@ def test_config_validate_loads_config():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()
+        host: str = field(default="localhost", )
 
     # No sources provide api_key, so validation should fail
     cfg = Config(
@@ -64,9 +64,9 @@ def test_config_load_with_validate_false():
     @dataclass
     class AppConfig:
         api_key: str = field(
-            default="", metadata={"optional": True}
+            default="", 
         )  # Use optional to avoid init error
-        host: str = field(default="localhost", metadata={"optional": True})
+        host: str = field(default="localhost", )
 
     cfg = Config(
         model=AppConfig,
@@ -84,8 +84,8 @@ def test_config_load_with_validate_true():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()
+        host: str = field(default="localhost", )
 
     cfg = Config(
         model=AppConfig,
@@ -101,8 +101,8 @@ def test_config_empty_collections_valid():
 
     @dataclass
     class AppConfig:
-        items: list = field(metadata={"required": True})
-        tags: dict = field(metadata={"required": True})
+        items: list = field()
+        tags: dict = field()
 
     cfg = Config(
         model=AppConfig,
@@ -123,9 +123,9 @@ def test_config_multiple_missing_fields():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        secret: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()
+        secret: str = field()
+        host: str = field(default="localhost", )
 
     cfg = Config(
         model=AppConfig,
@@ -145,13 +145,13 @@ def test_config_nested_validation():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        db: DBConfig = field(metadata={"required": True})
+        api_key: str = field()
+        db: DBConfig = field()
 
     cfg = Config(
         model=AppConfig,
@@ -172,7 +172,7 @@ def test_config_show_source_help():
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()
 
     # With source help enabled
     cfg_with_help = Config(

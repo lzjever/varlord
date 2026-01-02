@@ -17,25 +17,11 @@ def test_validate_model_definition_success():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()  # Required by default
+        host: str = field(default="localhost", )
 
     # Should not raise
     validate_model_definition(Config)
-
-
-def test_validate_model_definition_missing_metadata():
-    """Test model definition validation with missing metadata."""
-
-    @dataclass
-    class Config:
-        host: str = field(default="localhost")  # Missing required/optional
-
-    with pytest.raises(ModelDefinitionError) as exc_info:
-        validate_model_definition(Config)
-
-    assert "host" in str(exc_info.value)
-    assert "required" in str(exc_info.value) or "optional" in str(exc_info.value)
 
 
 def test_validate_model_definition_nested():
@@ -43,18 +29,15 @@ def test_validate_model_definition_nested():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432)  # Missing metadata
+        host: str = field()  # Required by default
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        db: DBConfig = field(metadata={"required": True})
+        db: DBConfig = field()  # Required by default
 
-    with pytest.raises(ModelDefinitionError) as exc_info:
-        validate_model_definition(AppConfig)
-
-    # Should catch missing metadata in nested field
-    assert "db.port" in str(exc_info.value) or "port" in str(exc_info.value)
+    # Should not raise
+    validate_model_definition(AppConfig)
 
 
 def test_validate_config_success():
@@ -62,8 +45,8 @@ def test_validate_config_success():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()  # Required by default
+        host: str = field(default="localhost", )
 
     config_dict = {
         "host": "0.0.0.0",
@@ -79,8 +62,8 @@ def test_validate_config_missing_required():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
-        host: str = field(default="localhost", metadata={"optional": True})
+        api_key: str = field()  # Required by default
+        host: str = field(default="localhost", )
 
     config_dict = {
         "host": "0.0.0.0",
@@ -99,7 +82,7 @@ def test_validate_config_empty_string_valid():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()  # Required by default
 
     config_dict = {
         "api_key": "",  # Empty string is valid
@@ -114,12 +97,12 @@ def test_validate_config_nested():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432, metadata={"optional": True})
+        host: str = field()  # Required by default
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        db: DBConfig = field(metadata={"required": True})
+        db: DBConfig = field()  # Required by default
 
     # Missing db.host
     config_dict = {
@@ -132,66 +115,64 @@ def test_validate_config_nested():
     assert "db.host" in str(exc_info.value)
 
 
-def test_validate_model_definition_rejects_optional_type():
-    """Test that validate_model_definition rejects Optional[T] type annotations."""
+def test_validate_model_definition_accepts_optional_type():
+    """Test that validate_model_definition accepts Optional[T] type annotations."""
     from typing import Optional
 
     @dataclass
-    class BadConfig:
-        api_key: Optional[str] = field(metadata={"optional": True})
+    class Config:
+        api_key: Optional[str] = field()
 
-    # Should raise ModelDefinitionError with reason="optional_type"
-    with pytest.raises(ModelDefinitionError) as exc_info:
-        validate_model_definition(BadConfig)
+    # Should not raise - Optional[T] is supported
+    validate_model_definition(Config)
 
-    assert "Optional" in str(exc_info.value)
-    assert exc_info.value.reason == "optional_type"
+    # Verify field is optional
+    from varlord.metadata import get_all_fields_info
+    field_infos = get_all_fields_info(Config)
+    api_key_info = next(f for f in field_infos if f.name == "api_key")
+    assert api_key_info.optional is True
+    assert api_key_info.required is False
 
 
-def test_validate_model_definition_rejects_union_none():
-    """Test that validate_model_definition rejects Union[T, None] type annotations."""
+def test_validate_model_definition_accepts_union_none():
+    """Test that validate_model_definition accepts Union[T, None] type annotations."""
     from typing import Union
 
     @dataclass
-    class BadConfig:
-        api_key: Union[str, None] = field(metadata={"optional": True})
+    class Config:
+        api_key: Union[str, None] = field()
 
-    # Should raise ModelDefinitionError with reason="optional_type"
-    with pytest.raises(ModelDefinitionError) as exc_info:
-        validate_model_definition(BadConfig)
+    # Should not raise - Union[T, None] is supported
+    validate_model_definition(Config)
 
-    assert "Optional" in str(exc_info.value)
-    assert exc_info.value.reason == "optional_type"
-
-
-def test_validate_model_definition_rejects_conflicting_metadata():
-    """Test that validate_model_definition rejects fields with both required and optional."""
-
-    @dataclass
-    class BadConfig:
-        api_key: str = field(metadata={"required": True, "optional": True})
-
-    # Should raise ModelDefinitionError with reason="conflicting_metadata"
-    with pytest.raises(ModelDefinitionError) as exc_info:
-        validate_model_definition(BadConfig)
-
-    assert "conflicting" in str(exc_info.value).lower() or "both" in str(exc_info.value).lower()
-    assert exc_info.value.reason == "conflicting_metadata"
+    # Verify field is optional
+    from varlord.metadata import get_all_fields_info
+    field_infos = get_all_fields_info(Config)
+    api_key_info = next(f for f in field_infos if f.name == "api_key")
+    assert api_key_info.optional is True
+    assert api_key_info.required is False
 
 
-def test_validate_model_definition_requires_exactly_one():
-    """Test that validate_model_definition requires exactly one of required/optional."""
+def test_validate_model_definition_default_required():
+    """Test that fields are required by default."""
 
-    # Test with only required
+    # Test with no metadata (should be required by default)
     @dataclass
     class Config1:
-        api_key: str = field(metadata={"required": True})
+        api_key: str = field()  # Required by default
 
-    # Test with only optional
+    # Test with optional
     @dataclass
     class Config2:
-        api_key: str = field(metadata={"optional": True})
+        api_key: str = field()
 
     # Both should pass
     validate_model_definition(Config1)
     validate_model_definition(Config2)
+
+    # Verify Config1 field is required
+    from varlord.metadata import get_all_fields_info
+    field_infos = get_all_fields_info(Config1)
+    api_key_info = next(f for f in field_infos if f.name == "api_key")
+    assert api_key_info.required is True
+    assert api_key_info.optional is False

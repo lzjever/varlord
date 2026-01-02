@@ -12,8 +12,8 @@ def test_handle_cli_flags_help():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True, "description": "Server host"})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field(metadata={"description": "Server host"})
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,
@@ -36,8 +36,8 @@ def test_handle_cli_flags_check_variables():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,
@@ -62,7 +62,7 @@ def test_handle_cli_flags_short_flags():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True})
+        host: str = field()
 
     cfg = Config(
         model=AppConfig,
@@ -94,9 +94,9 @@ def test_format_diagnostic_table():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=8000, metadata={"optional": True})
-        debug: bool = field(default=False, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=8000, )
+        debug: bool = field(default=False, )
 
     cfg = Config(
         model=AppConfig,
@@ -120,8 +120,8 @@ def test_format_diagnostic_table_with_env():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,
@@ -144,8 +144,8 @@ def test_handle_cli_commands():
 
     @dataclass
     class AppConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=8000, )
 
     cfg = Config(
         model=AppConfig,

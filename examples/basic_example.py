@@ -22,12 +22,13 @@ class AppConfig:
 def main():
     """Main function."""
     # Create config with multiple sources
+    # Model defaults are automatically applied - no need for sources.Defaults
+    # Sources filter by model fields automatically - model is auto-injected by Config
     cfg = Config(
         model=AppConfig,
         sources=[
-            sources.Defaults(model=AppConfig),  # Baseline defaults
-            sources.Env(prefix="APP_"),  # Environment variables (APP_HOST, APP_PORT, etc.)
-            sources.CLI(model=AppConfig),  # Command-line arguments (--host, --port, etc.)
+            sources.Env(),  # Environment variables (HOST, PORT, etc.) - model auto-injected
+            sources.CLI(),  # Command-line arguments (--host, --port, etc.) - model auto-injected
         ],
     )
 

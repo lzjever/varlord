@@ -31,8 +31,7 @@ def main():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_"),
+                sources.Env(),  # Model defaults applied automatically, model auto-injected
             ],
         )
 

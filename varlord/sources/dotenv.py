@@ -28,7 +28,7 @@ class DotEnv(Source):
     Example:
         >>> @dataclass
         ... class Config:
-        ...     api_key: str = field(metadata={"required": True})
+        ...     api_key: str = field()  # Required by default
         >>> # .env file: API_KEY=value1 OTHER_VAR=ignored
         >>> source = DotEnv(".env", model=Config)
         >>> source.load()

@@ -29,9 +29,9 @@ earlier ones**. Let's see this in action:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})  # Default
-       port: int = field(default=8000, metadata={"optional": True})          # Default
-       debug: bool = field(default=False, metadata={"optional": True})       # Default
+       host: str = field(default="127.0.0.1")  # Default
+       port: int = field(default=8000)          # Default
+       debug: bool = field(default=False)       # Default
 
    # Set environment variable (no prefix needed - filtered by model)
    os.environ["HOST"] = "0.0.0.0"
@@ -40,7 +40,7 @@ earlier ones**. Let's see this in action:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Env(),  # Model defaults applied first, then env overrides
+           sources.Env(),  # Model auto-injected, defaults applied first, then env overrides
        ],
    )
 
@@ -79,9 +79,9 @@ Command-line arguments have the highest priority (when listed last):
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
 
    # Set environment variable
    os.environ["PORT"] = "9000"
@@ -130,9 +130,9 @@ Varlord provides a convenient method to set up common sources:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
 
    # Set environment variables (no prefix needed)
    os.environ["HOST"] = "0.0.0.0"
@@ -177,8 +177,8 @@ nested keys:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
 
    # Environment variables (filtered by model - no prefix needed)
    os.environ["HOST"] = "0.0.0.0"
@@ -188,7 +188,7 @@ nested keys:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Env(),  # Only loads HOST and PORT (filtered by model)
+           sources.Env(),  # Model auto-injected, only loads HOST and PORT (filtered by model)
        ],
    )
 
@@ -217,9 +217,9 @@ Command-line arguments use kebab-case and are converted to dot notation:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
 
    # Command-line arguments
    sys.argv = [
@@ -271,10 +271,10 @@ Here's a complete example combining all sources:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
-       app_name: str = field(default="MyApp", metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
+       app_name: str = field(default="MyApp")
 
    def main():
        # Set environment variables (no prefix needed)
@@ -371,7 +371,7 @@ Best Practices
 2. **All sources filter by model**: Only model-defined fields are loaded
 3. **Order sources by priority**: Env → CLI (defaults applied first automatically)
 4. **Use Config.from_model() for common setups**: Reduces boilerplate
-5. **Explicitly mark fields**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
+5. **Fields are automatically determined**: Use ``Optional[T]`` type annotation or default values for optional fields
 
 Next Steps
 ----------

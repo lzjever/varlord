@@ -29,8 +29,8 @@ once at program startup, before calling ``load()``:
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=8000, metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=8000)
 
    def main():
        # Create config
@@ -186,7 +186,6 @@ Example:
    class AppConfig:
        host: str = field(
            metadata={
-               "required": True,
                "description": "Server host address",
                "help": "The IP address or hostname where the server will listen"
            }
@@ -194,7 +193,7 @@ Example:
        port: int = field(
            default=8000,
            metadata={
-               "optional": True,
+               
                "description": "Server port number"
            }
        )

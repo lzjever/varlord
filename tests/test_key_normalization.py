@@ -121,7 +121,7 @@ class TestDefaultsFieldValidation:
 
         @dataclass
         class Config:
-            db__host: str = field(default="localhost", metadata={"optional": True})
+            db__host: str = field(default="localhost", )
 
         # Should not raise - validation was removed
         source = Defaults(model=Config)
@@ -133,7 +133,7 @@ class TestDefaultsFieldValidation:
 
         @dataclass
         class Config:
-            a__b__c: str = field(default="value", metadata={"optional": True})
+            a__b__c: str = field(default="value", )
 
         # Should not raise
         source = Defaults(model=Config)
@@ -145,7 +145,7 @@ class TestDefaultsFieldValidation:
 
         @dataclass
         class Config:
-            a___b: str = field(default="value", metadata={"optional": True})
+            a___b: str = field(default="value", )
 
         # Should not raise
         source = Defaults(model=Config)
@@ -172,7 +172,7 @@ class TestDefaultsFieldValidation:
 
         @dataclass
         class Config:
-            db__host: str = field(default="localhost", metadata={"optional": True})
+            db__host: str = field(default="localhost", )
 
         # Should work without error
         source = Defaults(model=Config)
@@ -204,9 +204,9 @@ class TestDefaultsFieldValidation:
 
         @dataclass
         class Config:
-            host: str = field(default="localhost", metadata={"optional": True})
-            db__host: str = field(default="localhost", metadata={"optional": True})
-            port: int = field(default=8000, metadata={"optional": True})
+            host: str = field(default="localhost", )
+            db__host: str = field(default="localhost", )
+            port: int = field(default=8000, )
 
         # Should work without error
         source = Defaults(model=Config)

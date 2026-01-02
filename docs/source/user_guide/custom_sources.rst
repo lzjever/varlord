@@ -254,7 +254,7 @@ Once you've created a custom source, use it like any built-in source:
        model=AppConfig,
        sources=[
            JSONFileSource("config.json", watch=True),
-           sources.Env(),  # Model defaults applied automatically
+           sources.Env(),  # Model auto-injected, defaults applied automatically
        ],
    )
    

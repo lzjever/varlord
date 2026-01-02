@@ -60,7 +60,7 @@ class Config:
             - Priority is determined by sources order: later sources override earlier ones
             - Use PriorityPolicy only when you need per-key priority rules
             - Model defaults are automatically applied as base layer (no need for Defaults source)
-            - Model is automatically injected to all sources
+            - Model is automatically injected to all sources (no need to pass model to sources)
             - All fields MUST have explicit required/optional metadata
         """
         self._model = model
@@ -115,8 +115,8 @@ class Config:
             >>> from dataclasses import dataclass, field
             >>> @dataclass
             ... class AppConfig:
-            ...     host: str = field(default="127.0.0.1", metadata={"optional": True})
-            ...     port: int = field(default=8000, metadata={"optional": True})
+            ...     host: str = field(default="127.0.0.1", )
+            ...     port: int = field(default=8000, )
             >>> cfg = Config.from_model(
             ...     AppConfig,
             ...     cli=True,

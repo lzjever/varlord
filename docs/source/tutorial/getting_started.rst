@@ -26,10 +26,10 @@ First, let's create a simple configuration model for a web application:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
-       app_name: str = field(default="MyApp", metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
+       app_name: str = field(default="MyApp")
 
    # Create configuration
    # Model defaults are automatically applied - no need for sources.Defaults
@@ -55,11 +55,10 @@ First, let's create a simple configuration model for a web application:
 **Key Points**:
 
 - Use ``@dataclass(frozen=True)`` to create immutable configuration objects
-- Provide default values for all fields
-- **All fields must explicitly specify exactly one of** ``metadata={"required": True}`` or ``metadata={"optional": True}``
-  - Cannot omit both (will raise error)
-  - Cannot include both (will raise error)
-  - Cannot use ``Optional[T]`` type annotations (will raise error)
+- Fields are automatically determined as required/optional:
+  - Fields **without defaults** and **not Optional[T]** are **required**
+  - Fields **with Optional[T]** type annotation are **optional**
+  - Fields **with defaults** (or ``default_factory``) are **optional**
 - Model defaults are automatically applied - no need for ``sources.Defaults``
 - ``cfg.load()`` returns an instance of your configuration model
 
@@ -104,10 +103,10 @@ Here's a complete working example:
 
    @dataclass(frozen=True)
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
-       port: int = field(default=8000, metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
-       app_name: str = field(default="MyApp", metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
+       app_name: str = field(default="MyApp")
 
    def main():
        cfg = Config(
@@ -151,8 +150,8 @@ Common Pitfalls
    # This will fail if no other source provides 'host'
    app = cfg.load()  # May raise TypeError
 
-**Solution**: Always provide default values for all fields, or use ``Optional``
-for fields that may not be set.
+**Solution**: Always provide default values for optional fields, or use ``Optional[T]``
+type annotation for fields that may not be set.
 
 **Pitfall 4: Not using frozen dataclasses**
 
@@ -161,7 +160,7 @@ for fields that may not be set.
 
    @dataclass  # Missing frozen=True
    class AppConfig:
-       host: str = field(default="127.0.0.1", metadata={"optional": True})
+       host: str = field(default="127.0.0.1")
 
    app = cfg.load()
    app.host = "0.0.0.0"  # This works, but breaks immutability!
@@ -173,9 +172,9 @@ Best Practices
 --------------
 
 1. **Use descriptive field names**: Choose clear, self-documenting names
-2. **Explicitly mark fields**: Always use exactly one of ``metadata={"required": True}`` or ``metadata={"optional": True}``
+2. **Fields are automatically determined**: Use ``Optional[T]`` type annotation or default values for optional fields
 3. **Provide sensible defaults**: Defaults should work for development
-4. **Use appropriate types**: Use ``int``, ``str``, ``bool``, etc. correctly (not ``Optional[T]``)
+4. **Use appropriate types**: Use ``int``, ``str``, ``bool``, ``Optional[T]``, etc. correctly
 5. **Add field descriptions**: Use ``metadata={"description": "..."}`` for better documentation
 6. **Keep it simple**: Start with defaults, add complexity as needed
 

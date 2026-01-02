@@ -43,10 +43,10 @@ Defaults (Model Defaults)
 
    @dataclass
    class AppConfig:
-       host: str = field(default="localhost", metadata={"optional": True})
-       db_host: str = field(default="127.0.0.1", metadata={"optional": True})
-       db__host: str = field(default="127.0.0.1", metadata={"optional": True})
-       k8s_pod_name: str = field(default="default-pod", metadata={"optional": True})
+       host: str = field(default="localhost")
+       db_host: str = field(default="127.0.0.1")
+       db__host: str = field(default="127.0.0.1")
+       k8s_pod_name: str = field(default="default-pod")
    
    # Config automatically creates defaults source from model
    # Returns: {"host": "localhost", "db_host": "127.0.0.1", "db.host": "127.0.0.1", "k8s_pod_name": "default-pod"}
@@ -79,10 +79,10 @@ Env (Environment Variables)
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
-       db__host: str = field(metadata={"optional": True})
-       k8s_pod_name: str = field(metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
+       db__host: str = field(default="127.0.0.1")
+       k8s_pod_name: str = field(default="default-pod")
    
    # Environment variables:
    # HOST=0.0.0.0
@@ -130,11 +130,11 @@ CLI (Command-Line Arguments)
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
-       db__host: str = field(metadata={"optional": True})
-       k8s_pod_name: str = field(metadata={"optional": True})
-       debug: bool = field(default=False, metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
+       db__host: str = field(default="127.0.0.1")
+       k8s_pod_name: str = field(default="default-pod")
+       debug: bool = field(default=False)
    
    # Command line: python app.py --host 0.0.0.0 --port 9000 --db-host localhost --k8s-pod-name my-pod --debug
    # Or equivalently: --db_host, --k8s_pod_name (both work)
@@ -177,10 +177,10 @@ DotEnv (.env Files)
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
-       db__host: str = field(metadata={"optional": True})
-       k8s_pod_name: str = field(metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
+       db__host: str = field(default="127.0.0.1")
+       k8s_pod_name: str = field(default="default-pod")
    
    # .env file:
    # HOST=0.0.0.0
@@ -330,8 +330,8 @@ To use nested configuration, use double underscores (``__``) in your source keys
 
    @dataclass
    class AppConfig:
-       db__host: str = field(metadata={"optional": True})
-       db__port: int = field(default=5432, metadata={"optional": True})
+       db__host: str = field(default="")
+       db__port: int = field(default=5432)
    
    # Environment: DB__HOST=localhost DB__PORT=5432
    source = Env(model=AppConfig)
@@ -343,8 +343,8 @@ To use nested configuration, use double underscores (``__``) in your source keys
 
    @dataclass
    class AppConfig:
-       db__host: str = field(metadata={"optional": True})
-       db__port: int = field(default=5432, metadata={"optional": True})
+       db__host: str = field(default="")
+       db__port: int = field(default=5432)
    
    # Command line: --db-host localhost --db-port 5432
    source = CLI(model=AppConfig)
@@ -357,8 +357,8 @@ To use nested configuration, use double underscores (``__``) in your source keys
 
    @dataclass
    class AppConfig:
-       db__host: str = field(metadata={"optional": True})
-       db__port: int = field(default=5432, metadata={"optional": True})
+       db__host: str = field(default="")
+       db__port: int = field(default=5432)
    
    # .env file: DB__HOST=localhost DB__PORT=5432
    source = DotEnv(".env", model=AppConfig)
@@ -383,8 +383,8 @@ All sources (except Defaults) now use model-based filtering to control which var
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
    
    # Environment: HOST=0.0.0.0 PORT=9000 OTHER_VAR=ignored
    source = Env(model=AppConfig)
@@ -397,8 +397,8 @@ All sources (except Defaults) now use model-based filtering to control which var
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
    
    # Command line: --host 0.0.0.0 --port 9000 --other-var ignored
    source = CLI(model=AppConfig)
@@ -411,8 +411,8 @@ All sources (except Defaults) now use model-based filtering to control which var
 
    @dataclass
    class AppConfig:
-       host: str = field(metadata={"required": True})
-       port: int = field(default=9000, metadata={"optional": True})
+       host: str = field()
+       port: int = field(default=9000)
    
    # .env file: HOST=0.0.0.0 PORT=9000 OTHER_VAR=ignored
    source = DotEnv(".env", model=AppConfig)
@@ -432,7 +432,7 @@ each source handles overriding such fields:
 
    @dataclass
    class AppConfig:
-       k8s_pod_name: str = field(default="default-pod", metadata={"optional": True})
+       k8s_pod_name: str = field(default="default-pod")
    
    # Config automatically creates defaults from model
    # Returns: {"k8s_pod_name": "default-pod"}
@@ -454,7 +454,7 @@ each source handles overriding such fields:
 
    @dataclass
    class AppConfig:
-       k8s_pod_name: str = field(metadata={"optional": True})
+       k8s_pod_name: str = field(default="")
    
    # .env file: K8S_POD_NAME=my-pod
    source = DotEnv(".env", model=AppConfig)
@@ -467,7 +467,7 @@ each source handles overriding such fields:
 
    @dataclass
    class AppConfig:
-       k8s_pod_name: str = field(metadata={"optional": True})
+       k8s_pod_name: str = field(default="")
    
    # Environment: K8S_POD_NAME=my-pod
    source = Env(model=AppConfig)

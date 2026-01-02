@@ -21,7 +21,7 @@ class Env(Source):
     Example:
         >>> @dataclass
         ... class Config:
-        ...     api_key: str = field(metadata={"required": True})
+        ...     api_key: str = field()  # Required by default
         >>> # Environment: API_KEY=value1 OTHER_VAR=ignored
         >>> source = Env(model=Config)
         >>> source.load()
@@ -32,12 +32,15 @@ class Env(Source):
         """Initialize Env source.
 
         Args:
-            model: Model to filter environment variables.
+            model: Optional model to filter environment variables.
                   Only variables that map to model fields will be loaded.
-                  Model is required and will be auto-injected by Config.
+                  If None, model will be auto-injected by Config when used in Config.
+                  If provided, this model will be used (allows override).
 
         Note:
-            Prefix filtering is removed. All env vars are checked against model fields.
+            - Prefix filtering is removed. All env vars are checked against model fields.
+            - Recommended: Omit model parameter when used in Config (auto-injected).
+            - Advanced: Provide model explicitly if using source independently.
         """
         super().__init__(model=model)
 
@@ -57,7 +60,11 @@ class Env(Source):
             ValueError: If model is not provided
         """
         if not self._model:
-            raise ValueError("Env source requires model (should be auto-injected by Config)")
+            raise ValueError(
+                "Env source requires model. "
+                "When used in Config, model is auto-injected. "
+                "When used independently, provide model explicitly: Env(model=AppConfig)"
+            )
 
         # Get all valid field keys from model
         valid_keys = get_all_field_keys(self._model)

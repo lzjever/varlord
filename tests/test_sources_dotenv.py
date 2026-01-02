@@ -11,9 +11,9 @@ from varlord.sources.dotenv import DotEnv
 
 @dataclass
 class DotEnvTestConfig:
-    api_key: str = field(metadata={"required": True})
-    host: str = field(default="localhost", metadata={"optional": True})
-    port: int = field(default=8000, metadata={"optional": True})
+    api_key: str = field()
+    host: str = field(default="localhost", )
+    port: int = field(default=8000, )
 
 
 def test_dotenv_basic():
@@ -55,12 +55,12 @@ def test_dotenv_nested_keys():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        db: DBConfig = field(metadata={"required": True})
+        db: DBConfig = field()
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("DB__HOST=localhost\n")

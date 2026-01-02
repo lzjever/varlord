@@ -80,8 +80,7 @@ def main():
         cfg = Config(
             model=AppConfig,
             sources=[
-                sources.Defaults(model=AppConfig),
-                sources.Env(prefix="APP_", separator="__"),
+                sources.Env(),  # Model defaults applied automatically, model auto-injected
             ],
         )
 

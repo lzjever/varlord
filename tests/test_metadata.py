@@ -15,9 +15,9 @@ def test_get_all_fields_info_basic():
 
     @dataclass
     class Config:
-        api_key: str = field(metadata={"required": True, "description": "API key"})
+        api_key: str = field(metadata={"description": "API key"})
         host: str = field(default="localhost", metadata={"optional": True, "description": "Host"})
-        port: int = field(default=8000, metadata={"optional": True})
+        port: int = field(default=8000, )
 
     fields = get_all_fields_info(Config)
 
@@ -43,13 +43,13 @@ def test_get_all_fields_info_nested():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(default=5432, metadata={"optional": True})
+        host: str = field()
+        port: int = field(default=5432, )
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        db: DBConfig = field(metadata={"required": True})
+        api_key: str = field()
+        db: DBConfig = field()
 
     fields = get_all_fields_info(AppConfig)
 
@@ -72,13 +72,13 @@ def test_get_all_field_keys():
 
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
-        port: int = field(metadata={"required": True})
+        host: str = field()
+        port: int = field()
 
     @dataclass
     class AppConfig:
-        api_key: str = field(metadata={"required": True})
-        db: DBConfig = field(metadata={"required": True})
+        api_key: str = field()
+        db: DBConfig = field()
 
     keys = get_all_field_keys(AppConfig)
     # Note: parent field 'db' is also included
@@ -90,8 +90,8 @@ def test_get_field_info():
 
     @dataclass
     class Config:
-        host: str = field(default="localhost", metadata={"optional": True})
-        port: int = field(default=8000, metadata={"optional": True})
+        host: str = field(default="localhost", )
+        port: int = field(default=8000, )
 
     field_info = get_field_info(Config, "host")
     assert field_info is not None
@@ -101,11 +101,11 @@ def test_get_field_info():
     # Test nested field
     @dataclass
     class DBConfig:
-        host: str = field(metadata={"required": True})
+        host: str = field()
 
     @dataclass
     class AppConfig:
-        db: DBConfig = field(metadata={"required": True})
+        db: DBConfig = field()
 
     field_info = get_field_info(AppConfig, "db.host")
     assert field_info is not None
