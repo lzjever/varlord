@@ -253,9 +253,8 @@ Once you've created a custom source, use it like any built-in source:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            JSONFileSource("config.json", watch=True),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Model defaults applied automatically
        ],
    )
    

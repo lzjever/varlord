@@ -13,13 +13,12 @@ Priority is determined by the order of sources in the list. **Later sources over
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),  # Lowest priority (first)
-           sources.Env(prefix="APP_"),         # Medium priority
-           sources.CLI(),                      # Highest priority (last)
+           sources.Env(),  # Model defaults applied first (lowest priority)
+           sources.CLI(),  # Highest priority (last)
        ],
    )
    
-   # Result: CLI overrides Env, Env overrides Defaults
+   # Result: CLI overrides Env, Env overrides Model Defaults
 
 This is the simplest and most intuitive way. Just reorder the sources list.
 

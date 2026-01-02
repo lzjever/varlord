@@ -10,6 +10,7 @@ This guide covers all aspects of using Varlord.
    metadata_fields
    sources
    key_mapping
+   cli_commands
    custom_sources
    priority
    validation

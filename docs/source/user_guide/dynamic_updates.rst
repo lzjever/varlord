@@ -33,8 +33,8 @@ Watch Detection
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            sources.Etcd(..., watch=True),  # Enable watch here
+           # Model defaults applied automatically
        ],
    )
    
@@ -52,8 +52,7 @@ If no sources support watch, ``load_store()`` and ``subscribe()`` still work, bu
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Model defaults applied automatically
        ],
    )
    
@@ -105,8 +104,8 @@ Currently, only Etcd source supports watch:
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            sources.Etcd(..., watch=True),  # Enable watch
+           # Model defaults applied automatically
        ],
    )
 

@@ -18,8 +18,8 @@ Why doesn't ``load_store()`` need a ``watch`` parameter?
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
            sources.Etcd(..., watch=True),  # Enable watch here
+           # Model defaults applied automatically
        ],
    )
    
@@ -54,8 +54,7 @@ What happens if I call ``subscribe()`` but no sources support watch?
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),
-           sources.Env(prefix="APP_"),
+           sources.Env(),  # Model defaults applied automatically
        ],
    )
    
@@ -130,13 +129,12 @@ How does priority ordering work?
    cfg = Config(
        model=AppConfig,
        sources=[
-           sources.Defaults(model=AppConfig),  # Lowest priority (first)
-           sources.Env(prefix="APP_"),        # Medium priority
-           sources.CLI(),                     # Highest priority (last)
+           sources.Env(),  # Model defaults applied first (lowest priority)
+           sources.CLI(),  # Highest priority (last)
        ],
    )
    
-   # Result: CLI overrides Env, Env overrides Defaults
+   # Result: CLI overrides Env, Env overrides Model Defaults
 
 **Advanced Priority (Per-Key Rules)**:
 
