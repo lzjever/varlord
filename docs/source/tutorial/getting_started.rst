@@ -56,7 +56,10 @@ First, let's create a simple configuration model for a web application:
 
 - Use ``@dataclass(frozen=True)`` to create immutable configuration objects
 - Provide default values for all fields
-- **All fields must explicitly specify** ``metadata={"required": True}`` or ``metadata={"optional": True}``
+- **All fields must explicitly specify exactly one of** ``metadata={"required": True}`` or ``metadata={"optional": True}``
+  - Cannot omit both (will raise error)
+  - Cannot include both (will raise error)
+  - Cannot use ``Optional[T]`` type annotations (will raise error)
 - Model defaults are automatically applied - no need for ``sources.Defaults``
 - ``cfg.load()`` returns an instance of your configuration model
 
@@ -151,7 +154,7 @@ Common Pitfalls
 **Solution**: Always provide default values for all fields, or use ``Optional``
 for fields that may not be set.
 
-**Pitfall 3: Not using frozen dataclasses**
+**Pitfall 4: Not using frozen dataclasses**
 
 .. code-block:: python
    :emphasize-lines: 1
@@ -170,9 +173,9 @@ Best Practices
 --------------
 
 1. **Use descriptive field names**: Choose clear, self-documenting names
-2. **Explicitly mark fields as required or optional**: Always use ``metadata={"required": True}`` or ``metadata={"optional": True}``
+2. **Explicitly mark fields**: Always use exactly one of ``metadata={"required": True}`` or ``metadata={"optional": True}``
 3. **Provide sensible defaults**: Defaults should work for development
-4. **Use appropriate types**: Use ``int``, ``str``, ``bool``, etc. correctly
+4. **Use appropriate types**: Use ``int``, ``str``, ``bool``, etc. correctly (not ``Optional[T]``)
 5. **Add field descriptions**: Use ``metadata={"description": "..."}`` for better documentation
 6. **Keep it simple**: Start with defaults, add complexity as needed
 

@@ -5,7 +5,6 @@ Integration tests for the complete configuration system.
 import os
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
@@ -23,7 +22,9 @@ def test_full_workflow():
         port: int = field(default=8000, metadata={"optional": True})
         debug: bool = field(default=False, metadata={"optional": True})
         timeout: float = field(default=30.0, metadata={"optional": True})
-        api_key: Optional[str] = field(default=None, metadata={"optional": True})
+        api_key: str = field(
+            default=None, metadata={"optional": True}
+        )  # Use str instead of Optional[str]
 
     # Set environment variables
     os.environ["HOST"] = "0.0.0.0"

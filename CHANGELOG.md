@@ -5,10 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - Unreleased
+
+### Added
+- **PrettyTable Integration**: Diagnostic tables now use `prettytable` library for better formatted ASCII tables
+- **Standard CLI Options**: All varlord-based applications now support standard command-line options:
+  - `--help, -h`: Show help message and exit
+  - `--check-variables, -cv`: Show diagnostic table of all configuration variables and exit
+- **Enhanced Diagnostic Table**: `--check-variables` now displays two comprehensive tables:
+  - **Variable Status Table**: Shows all configuration variables with their status (Required/Optional, Loaded/Missing, Source, Value)
+  - **Source Information Table**: Shows detailed source diagnostics including:
+    - Priority order (1 = lowest, higher numbers = higher priority)
+    - Source name (readable format)
+    - Source parameters (e.g., path, host, port, watch settings)
+    - Load time in milliseconds (for performance diagnostics)
+    - Watch support status (Yes/No)
+    - Last update time (N/A for now, extensible for future use)
+- **Improved Help Output**: Help text now includes standard options section at the beginning
+- **Source Load Time Measurement**: Automatic measurement of source load times for performance diagnostics
+
+### Changed
+- **Help Output**: Removed "Configuration Source Priority" section from help output (moved to `--check-variables` for better visibility)
+- **Diagnostic Output**: `--check-variables` now provides comprehensive source diagnostics in addition to variable status
+- **Dependencies**: Added `prettytable>=3.0.0` as a core dependency for better table formatting
+
+### Fixed
+- Fixed `Env.__repr__()` to reflect model-based filtering (removed outdated `prefix` reference)
+- Improved error messages when required fields are missing in `--check-variables` mode
+
 ## [0.2.0] - 2025-01-02
 
 ### Added
-- **Explicit Required/Optional Configuration**: All fields must explicitly specify `required=True` or `optional=True` in metadata. No inference allowed.
+- **Explicit Required/Optional Configuration**: All fields must explicitly specify exactly one of `required=True` or `optional=True` in metadata. No inference allowed.
+  - Missing both raises `ModelDefinitionError` with reason `"missing_metadata"`
+  - Including both raises `ModelDefinitionError` with reason `"conflicting_metadata"`
+  - Using `Optional[T]` type annotation raises `ModelDefinitionError` with reason `"optional_type"`
 - **Automatic Model Defaults**: Model defaults are automatically applied as base layer. No need to explicitly include `sources.Defaults` in sources list.
 - **Model-Driven Source Filtering**: All sources (Env, CLI, DotEnv, Etcd) now filter variables/arguments based on model fields. Only model-defined fields are loaded.
 - **Required Field Validation**: New `Config.validate()` method to validate required fields independently. `Config.load()` now has optional `validate` parameter.

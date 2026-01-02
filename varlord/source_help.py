@@ -107,9 +107,9 @@ def format_source_help(sources: List[Source], missing_fields: List[str]) -> str:
             source_types[source_type] = []
         source_types[source_type].append(source)
 
-    # Generate examples for each source type
+    # Generate examples for each source type (without ASCII boxes)
     if "env" in source_types:
-        lines.append("┌─ Environment Variables ──────────────────────────────────────────────┐")
+        lines.append("Environment Variables:")
         for field_key in missing_fields:
             # Try to get field type from first source's model
             field_type = str  # Default
@@ -119,14 +119,12 @@ def format_source_help(sources: List[Source], missing_fields: List[str]) -> str:
                     field_type = field_info.type
 
             example = generate_env_example(field_key, field_type)
-            lines.append(f"│ {example}")
-        lines.append("│")
-        lines.append("│ Note: Use double underscore (__) for nested keys")
-        lines.append("└──────────────────────────────────────────────────────────────────────┘")
+            lines.append(f"  {example}")
+        lines.append("  Note: Use double underscore (__) for nested keys")
         lines.append("")
 
     if "cli" in source_types:
-        lines.append("┌─ Command Line Arguments ──────────────────────────────────────────────┐")
+        lines.append("Command Line Arguments:")
         for field_key in missing_fields:
             # Try to get field type from first source's model
             field_type = str  # Default
@@ -136,15 +134,13 @@ def format_source_help(sources: List[Source], missing_fields: List[str]) -> str:
                     field_type = field_info.type
 
             example = generate_cli_example(field_key, field_type)
-            lines.append(f"│ python app.py {example}")
-        lines.append("│")
-        lines.append("│ Note: Use hyphens or underscores (both work)")
-        lines.append("└──────────────────────────────────────────────────────────────────────┘")
+            lines.append(f"  python app.py {example}")
+        lines.append("  Note: Use hyphens or underscores (both work)")
         lines.append("")
 
     if "dotenv" in source_types:
-        lines.append("┌─ .env File ───────────────────────────────────────────────────────────┐")
-        lines.append("│ Create .env file with:")
+        lines.append(".env File:")
+        lines.append("  Create .env file with:")
         for field_key in missing_fields:
             # Try to get field type from first source's model
             field_type = str  # Default
@@ -154,12 +150,13 @@ def format_source_help(sources: List[Source], missing_fields: List[str]) -> str:
                     field_type = field_info.type
 
             example = generate_dotenv_example(field_key, field_type)
-            lines.append(f"│ {example}")
-        lines.append("│")
-        lines.append("│ Note: Use double underscore (__) for nested keys")
-        lines.append("└──────────────────────────────────────────────────────────────────────┘")
+            lines.append(f"  {example}")
+        lines.append("  Note: Use double underscore (__) for nested keys")
         lines.append("")
 
+    lines.append("For detailed mapping rules, see:")
+    lines.append("  https://varlord.readthedocs.io/en/latest/user_guide/key_mapping.html")
+    lines.append("")
     lines.append("For more information, run: python app.py --help")
 
     return "\n".join(lines)

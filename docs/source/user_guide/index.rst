@@ -7,6 +7,7 @@ This guide covers all aspects of using Varlord.
    :maxdepth: 2
 
    configuration_models
+   metadata_fields
    sources
    key_mapping
    custom_sources

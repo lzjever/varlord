@@ -130,3 +130,68 @@ def test_validate_config_nested():
         validate_config(AppConfig, config_dict, [])
 
     assert "db.host" in str(exc_info.value)
+
+
+def test_validate_model_definition_rejects_optional_type():
+    """Test that validate_model_definition rejects Optional[T] type annotations."""
+    from typing import Optional
+
+    @dataclass
+    class BadConfig:
+        api_key: Optional[str] = field(metadata={"optional": True})
+
+    # Should raise ModelDefinitionError with reason="optional_type"
+    with pytest.raises(ModelDefinitionError) as exc_info:
+        validate_model_definition(BadConfig)
+
+    assert "Optional" in str(exc_info.value)
+    assert exc_info.value.reason == "optional_type"
+
+
+def test_validate_model_definition_rejects_union_none():
+    """Test that validate_model_definition rejects Union[T, None] type annotations."""
+    from typing import Union
+
+    @dataclass
+    class BadConfig:
+        api_key: Union[str, None] = field(metadata={"optional": True})
+
+    # Should raise ModelDefinitionError with reason="optional_type"
+    with pytest.raises(ModelDefinitionError) as exc_info:
+        validate_model_definition(BadConfig)
+
+    assert "Optional" in str(exc_info.value)
+    assert exc_info.value.reason == "optional_type"
+
+
+def test_validate_model_definition_rejects_conflicting_metadata():
+    """Test that validate_model_definition rejects fields with both required and optional."""
+
+    @dataclass
+    class BadConfig:
+        api_key: str = field(metadata={"required": True, "optional": True})
+
+    # Should raise ModelDefinitionError with reason="conflicting_metadata"
+    with pytest.raises(ModelDefinitionError) as exc_info:
+        validate_model_definition(BadConfig)
+
+    assert "conflicting" in str(exc_info.value).lower() or "both" in str(exc_info.value).lower()
+    assert exc_info.value.reason == "conflicting_metadata"
+
+
+def test_validate_model_definition_requires_exactly_one():
+    """Test that validate_model_definition requires exactly one of required/optional."""
+
+    # Test with only required
+    @dataclass
+    class Config1:
+        api_key: str = field(metadata={"required": True})
+
+    # Test with only optional
+    @dataclass
+    class Config2:
+        api_key: str = field(metadata={"optional": True})
+
+    # Both should pass
+    validate_model_definition(Config1)
+    validate_model_definition(Config2)

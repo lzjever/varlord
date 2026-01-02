@@ -75,4 +75,4 @@ class Env(Source):
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"<Env(prefix={self._prefix!r})>"
+        return "<Env(model-based)>"

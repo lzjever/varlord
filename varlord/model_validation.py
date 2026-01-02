@@ -9,7 +9,7 @@ For value validation (e.g., validate_port, validate_email), see varlord.validato
 """
 
 from __future__ import annotations
-from typing import Type, Any, Dict, List
+from typing import Type, Any, Dict, List, get_origin, get_args, Union
 from varlord.metadata import get_all_fields_info
 from varlord.sources.base import Source
 
@@ -23,24 +23,44 @@ class VarlordError(Exception):
 class ModelDefinitionError(VarlordError):
     """Raised when model definition is invalid.
 
-    This error is raised when a field is missing required/optional metadata.
+    This error is raised when a field is missing required/optional metadata,
+    has both required and optional, or uses disallowed type annotations like Optional[T].
     """
 
-    def __init__(self, field_name: str, model_name: str):
+    def __init__(self, field_name: str, model_name: str, reason: str = "missing_metadata"):
         """Initialize ModelDefinitionError.
 
         Args:
-            field_name: Name of the field missing metadata
+            field_name: Name of the field with the issue
             model_name: Name of the model class
+            reason: Reason for the error ("missing_metadata", "conflicting_metadata", or "optional_type")
         """
         self.field_name = field_name
         self.model_name = model_name
-        message = (
-            f"Field '{field_name}' in model '{model_name}' must have "
-            f"either 'required' or 'optional' in metadata. "
-            f"Example: field(metadata={{'required': True}}) or "
-            f"field(metadata={{'optional': True}})"
-        )
+        self.reason = reason
+
+        if reason == "optional_type":
+            message = (
+                f"Field '{field_name}' in model '{model_name}' uses Optional[T] type annotation, "
+                f"which is not allowed. Use explicit metadata instead:\n"
+                f"  Instead of: field_name: Optional[str] = field(...)\n"
+                f"  Use: field_name: str = field(metadata={{'optional': True}}, ...)\n"
+                f"  Or: field_name: str = field(metadata={{'required': True}}, ...)"
+            )
+        elif reason == "conflicting_metadata":
+            message = (
+                f"Field '{field_name}' in model '{model_name}' has both 'required' and 'optional' "
+                f"in metadata, which is not allowed. Use exactly one:\n"
+                f"  field(metadata={{'required': True}})  # For required fields\n"
+                f"  field(metadata={{'optional': True}})   # For optional fields"
+            )
+        else:  # missing_metadata
+            message = (
+                f"Field '{field_name}' in model '{model_name}' must have "
+                f"exactly one of 'required' or 'optional' in metadata. "
+                f"Example: field(metadata={{'required': True}}) or "
+                f"field(metadata={{'optional': True}})"
+            )
         super().__init__(message)
 
 
@@ -101,14 +121,39 @@ class RequiredFieldError(VarlordError):
         return "\n".join(lines)
 
 
+def _is_optional_type(field_type: Type[Any]) -> bool:
+    """Check if a type is Optional[T] or Union[T, None].
+
+    Args:
+        field_type: Type to check
+
+    Returns:
+        True if the type is Optional[T] or Union[T, None]
+    """
+    origin = get_origin(field_type)
+    if origin is None:
+        return False
+
+    # Check for Optional[T] (which is Union[T, None])
+    if origin is Union:
+        args = get_args(field_type)
+        # Optional[T] is Union[T, None], so check if None is in args
+        if type(None) in args:
+            return True
+
+    return False
+
+
 def validate_model_definition(model: Type[Any]) -> None:
-    """Validate that all fields in model have explicit required/optional metadata.
+    """Validate that all fields in model have explicit required/optional metadata
+    and do not use Optional[T] type annotations.
 
     Args:
         model: Dataclass model to validate
 
     Raises:
         ModelDefinitionError: If any field is missing required/optional metadata
+            or uses Optional[T] type annotation
 
     Example:
         >>> @dataclass
@@ -116,18 +161,46 @@ def validate_model_definition(model: Type[Any]) -> None:
         ...     api_key: str = field()  # Missing metadata
         >>> validate_model_definition(Config)
         ModelDefinitionError: Field 'api_key' in model 'Config' must have...
+
+        >>> from typing import Optional
+        >>> @dataclass
+        ... class Config:
+        ...     api_key: Optional[str] = field(metadata={"optional": True})  # Optional type not allowed
+        >>> validate_model_definition(Config)
+        ModelDefinitionError: Field 'api_key' in model 'Config' uses Optional[T]...
     """
     if not hasattr(model, "__name__"):
         model_name = str(model)
     else:
         model_name = model.__name__
 
-    field_infos = get_all_fields_info(model)
+    # Get field information from metadata module
+    from dataclasses import fields, is_dataclass
 
+    if not is_dataclass(model):
+        return
+
+    for field_obj in fields(model):
+        # Check for Optional[T] type annotation
+        if _is_optional_type(field_obj.type):
+            from varlord.sources.base import normalize_key
+
+            normalized_key = normalize_key(field_obj.name)
+            raise ModelDefinitionError(normalized_key, model_name, reason="optional_type")
+
+    # Check metadata requirements
+    field_infos = get_all_fields_info(model)
     for field_info in field_infos:
-        # Check if field has explicit required or optional metadata
+        # Check if field has both required and optional (conflict)
+        if field_info.required and field_info.optional:
+            raise ModelDefinitionError(
+                field_info.normalized_key, model_name, reason="conflicting_metadata"
+            )
+        # Check if field has neither required nor optional (missing)
         if not field_info.required and not field_info.optional:
-            raise ModelDefinitionError(field_info.normalized_key, model_name)
+            raise ModelDefinitionError(
+                field_info.normalized_key, model_name, reason="missing_metadata"
+            )
 
 
 def validate_config(

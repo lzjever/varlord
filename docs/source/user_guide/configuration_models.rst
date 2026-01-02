@@ -17,7 +17,14 @@ Basic Model
        port: int = field(default=8000, metadata={"optional": True})
        debug: bool = field(default=False, metadata={"optional": True})
 
-**Important**: All fields must explicitly specify ``metadata={"required": True}`` or ``metadata={"optional": True}``.
+**Important**: All fields must explicitly specify **exactly one** of:
+- ``metadata={"required": True}`` - Field is required and must be provided
+- ``metadata={"optional": True}`` - Field is optional and may have a default
+
+You cannot:
+- Omit both (will raise ``ModelDefinitionError``)
+- Include both (will raise ``ModelDefinitionError``)
+- Use ``Optional[T]`` type annotations (will raise ``ModelDefinitionError``)
 
 Required Fields
 ---------------
@@ -44,12 +51,15 @@ Mark fields as optional when they have defaults or may not be set:
 .. code-block:: python
 
    from dataclasses import dataclass, field
-   from typing import Optional
 
    @dataclass(frozen=True)
    class AppConfig:
-       api_key: Optional[str] = field(default=None, metadata={"optional": True})
-       timeout: Optional[float] = field(default=None, metadata={"optional": True})
+       # Use explicit type (str, not Optional[str]) with metadata
+       api_key: str = field(default=None, metadata={"optional": True})
+       timeout: float = field(default=None, metadata={"optional": True})
+
+**Important**: Do not use ``Optional[T]`` type annotations. Use explicit types (e.g., ``str``) 
+with ``metadata={"optional": True}`` instead. This ensures clarity and consistency.
 
 Field Descriptions
 ------------------
@@ -77,6 +87,15 @@ Add descriptions and help text via metadata:
                "help": "Required API key"
            }
        )
+
+**Supported Metadata Keys**:
+
+- ``required: bool`` - **Required**: Field is required (must be provided)
+- ``optional: bool`` - **Required**: Field is optional (may have default)
+- ``description: str`` - **Optional**: General field description (used for documentation and CLI help)
+- ``help: str`` - **Optional**: CLI-specific help text (overrides description for CLI help if provided)
+
+**Note**: You must specify exactly one of ``required=True`` or ``optional=True``. The ``description`` and ``help`` fields are optional but recommended for better user experience.
 
 Default Factories
 -----------------

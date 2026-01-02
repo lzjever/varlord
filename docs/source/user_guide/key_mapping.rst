@@ -28,12 +28,12 @@ This unified rule ensures that:
 Mapping Rules by Source
 ------------------------
 
-Defaults
-~~~~~~~~
+Defaults (Model Defaults)
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-**Source**: ``sources.Defaults``
+**Source**: Automatically created from model defaults (no need to explicitly add ``sources.Defaults``)
 
-**Input**: Dataclass field names
+**Input**: Dataclass field names with default values
 
 **Mapping**: Unified normalization (``__`` → ``.``, ``_`` preserved, lowercase)
 
@@ -43,19 +43,23 @@ Defaults
 
    @dataclass
    class AppConfig:
-       host: str = "localhost"
-       db_host: str = "127.0.0.1"
-       db__host: str = "127.0.0.1"
-       k8s_pod_name: str = "default-pod"
+       host: str = field(default="localhost", metadata={"optional": True})
+       db_host: str = field(default="127.0.0.1", metadata={"optional": True})
+       db__host: str = field(default="127.0.0.1", metadata={"optional": True})
+       k8s_pod_name: str = field(default="default-pod", metadata={"optional": True})
    
+   # Config automatically creates defaults source from model
    # Returns: {"host": "localhost", "db_host": "127.0.0.1", "db.host": "127.0.0.1", "k8s_pod_name": "default-pod"}
 
 **Notes**:
+- Defaults are automatically extracted from model fields
+- No need to explicitly add ``sources.Defaults`` to your sources list
 - Field names are normalized using unified rules
 - ``__`` in field names becomes ``.`` (for nesting)
 - Single ``_`` is preserved
 - All keys are lowercase
 - Supports nested dataclasses (fields become ``"parent.child"``)
+- Defaults have the lowest priority (can be overridden by other sources)
 
 Env (Environment Variables)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -66,43 +70,44 @@ Env (Environment Variables)
 
 **Mapping Rules**:
 
-1. **Prefix filtering**: Only variables with the specified prefix are loaded
-2. **Prefix removal**: The prefix is stripped from the variable name
-3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+1. **Model-based filtering**: Only environment variables that map to fields defined in the model are loaded
+2. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
 
 **Example**:
 
 .. code-block:: python
 
-   # Environment variables:
-   # APP_HOST=0.0.0.0
-   # APP_PORT=9000
-   # APP_DB__HOST=localhost
-   # APP_DB__PORT=5432
-   # APP_K8S_POD_NAME=my-pod
-   # OTHER_VAR=ignored
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+       db__host: str = field(metadata={"optional": True})
+       k8s_pod_name: str = field(metadata={"optional": True})
    
-   source = Env(prefix="APP_")
-   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "db.port": "5432", "k8s_pod_name": "my-pod"}
+   # Environment variables:
+   # HOST=0.0.0.0
+   # PORT=9000
+   # DB__HOST=localhost
+   # K8S_POD_NAME=my-pod
+   # OTHER_VAR=ignored  # This will be ignored (not in model)
+   
+   source = Env(model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "k8s_pod_name": "my-pod"}
 
 **Mapping Details**:
 
-- ``APP_HOST`` → ``host`` (prefix removed, unified normalization)
-- ``APP_DB__HOST`` → ``db.host`` (prefix removed, ``__`` → ``.``)
-- ``APP_K8S_POD_NAME`` → ``k8s_pod_name`` (prefix removed, single ``_`` preserved)
-- ``OTHER_VAR`` → ignored (no prefix match)
+- ``HOST`` → ``host`` (unified normalization)
+- ``DB__HOST`` → ``db.host`` (``__`` → ``.``)
+- ``K8S_POD_NAME`` → ``k8s_pod_name`` (single ``_`` preserved)
+- ``OTHER_VAR`` → ignored (not in model fields)
 
-**Custom Normalization**:
+**Notes**:
 
-You can provide a custom normalization function to override the default:
-
-.. code-block:: python
-
-   def custom_normalize(key: str) -> str:
-       # Your custom logic
-       return key.lower().replace("_", "-")
-   
-   source = Env(prefix="APP_", normalize_key=custom_normalize)
+- Model is required and will be auto-injected by ``Config`` if not provided
+- All environment variables are checked against model fields
+- Only variables that map to model fields are loaded
+- No prefix filtering - use model fields to control which variables are loaded
+- If you want to use a prefix in environment variable names, ensure your model field names match after normalization
 
 CLI (Command-Line Arguments)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -113,15 +118,24 @@ CLI (Command-Line Arguments)
 
 **Mapping Rules**:
 
-1. **Prefix removal**: The ``--`` prefix is removed
-2. **Hyphen and underscore equivalence**: Both ``-`` and ``_`` are treated the same
-3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
-4. **Type conversion**: Values are converted based on model field types
+1. **Model-based filtering**: Only arguments for fields defined in the model are parsed
+2. **Prefix removal**: The ``--`` prefix is removed
+3. **Hyphen and underscore equivalence**: Both ``-`` and ``_`` are treated the same
+4. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+5. **Type conversion**: Values are converted based on model field types
 
 **Example**:
 
 .. code-block:: python
 
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+       db__host: str = field(metadata={"optional": True})
+       k8s_pod_name: str = field(metadata={"optional": True})
+       debug: bool = field(default=False, metadata={"optional": True})
+   
    # Command line: python app.py --host 0.0.0.0 --port 9000 --db-host localhost --k8s-pod-name my-pod --debug
    # Or equivalently: --db_host, --k8s_pod_name (both work)
    
@@ -136,11 +150,14 @@ CLI (Command-Line Arguments)
 - ``--debug`` → ``debug`` (boolean flag, becomes ``True``)
 - ``--no-debug`` → ``debug: False`` (negation flag)
 
-**Special Behavior**:
+**Notes**:
 
-CLI treats hyphens and underscores equivalently, allowing flexible command-line syntax:
-- ``--db-host`` and ``--db_host`` both work (if field is ``db__host`` or ``db_host``)
-- The unified normalization rule applies after converting ``-`` to ``_``
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Only arguments for model fields are parsed
+- CLI treats hyphens and underscores equivalently, allowing flexible command-line syntax:
+  - ``--db-host`` and ``--db_host`` both work (if field is ``db__host`` or ``db_host``)
+  - The unified normalization rule applies after converting ``-`` to ``_``
+- Help text and descriptions are automatically extracted from field metadata
 
 DotEnv (.env Files)
 ~~~~~~~~~~~~~~~~~~~
@@ -151,44 +168,38 @@ DotEnv (.env Files)
 
 **Mapping Rules**:
 
-1. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
-2. **No prefix filtering**: All keys from .env file are loaded
+1. **Model-based filtering**: Only variables that map to fields defined in the model are loaded
+2. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
 
 **Example**:
 
 .. code-block:: python
 
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+       db__host: str = field(metadata={"optional": True})
+       k8s_pod_name: str = field(metadata={"optional": True})
+   
    # .env file:
    # HOST=0.0.0.0
    # PORT=9000
-   # DB_HOST=localhost
    # DB__HOST=localhost
    # K8S_POD_NAME=my-pod
+   # OTHER_VAR=ignored  # This will be ignored (not in model)
    
-   source = DotEnv(".env")
-   # Returns: {"host": "0.0.0.0", "port": "9000", "db_host": "localhost", "db.host": "localhost", "k8s_pod_name": "my-pod"}
+   source = DotEnv(".env", model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": "9000", "db.host": "localhost", "k8s_pod_name": "my-pod"}
 
 **Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Only variables that map to model fields are loaded
 - Keys are normalized using unified rules
 - ``__`` becomes ``.`` (for nesting)
 - Single ``_`` is preserved
 - All keys are lowercase
-- No prefix filtering
-
-**Best Practice**:
-
-Use ``DotEnv`` with ``Env`` for prefix filtering:
-
-.. code-block:: python
-
-   # .env file uses APP_ prefix
-   # APP_HOST=0.0.0.0
-   # APP_DB__HOST=localhost
-   
-   sources = [
-       sources.DotEnv(".env"),  # Loads into environment
-       sources.Env(prefix="APP_"),  # Filters and normalizes keys
-   ]
+- No prefix filtering - use model fields to control which variables are loaded
 
 Etcd
 ~~~~
@@ -248,7 +259,9 @@ Comparison Table
 +==================+==================+==================+==================+==================+
 | Input            | Field names      | Env var names    | CLI args         | .env file        |
 +------------------+------------------+------------------+------------------+------------------+
-| Prefix filter    | No               | Yes (optional)   | No               | No               |
+| Model filter     | N/A (from model) | Yes (required)   | Yes (required)   | Yes (required)   |
++------------------+------------------+------------------+------------------+------------------+
+| Prefix filter    | No               | No               | No               | No               |
 +------------------+------------------+------------------+------------------+------------------+
 | Normalization    | Unified rule     | Unified rule     | Unified rule     | Unified rule     |
 +------------------+------------------+------------------+------------------+------------------+
@@ -262,17 +275,17 @@ Comparison Table
 +------------------+------------------+------------------+------------------+------------------+
 | Type conversion  | Native types     | Strings          | Based on model   | Strings          |
 +------------------+------------------+------------------+------------------+------------------+
-| Example input    | ``host``         | ``APP_HOST``     | ``--host``       | ``HOST``         |
+| Example input    | ``host``         | ``HOST``         | ``--host``       | ``HOST``         |
 +------------------+------------------+------------------+------------------+------------------+
 | Example output   | ``host``         | ``host``         | ``host``         | ``host``         |
 +------------------+------------------+------------------+------------------+------------------+
-| Nested example   | ``db__host``     | ``APP_DB__HOST`` | ``--db-host``    | ``DB__HOST``     |
+| Nested example   | ``db__host``     | ``DB__HOST``     | ``--db-host``    | ``DB__HOST``     |
 +------------------+------------------+------------------+------------------+------------------+
 | Nested output    | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      |
 +------------------+------------------+------------------+------------------+------------------+
-| Underscore ex.   | ``k8s_pod_name`` |``APP_K8S_POD``   |``--k8s-pod-name``|``K8S_POD_NAME``  |
+| Underscore ex.   | ``k8s_pod_name`` |``K8S_POD_NAME``  |``--k8s-pod-name``|``K8S_POD_NAME``  |
 +------------------+------------------+------------------+------------------+------------------+
-| Underscore out   | ``k8s_pod_name`` | ``k8s_pod``      | ``k8s_pod_name`` | ``k8s_pod_name`` |
+| Underscore out   | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` |
 +------------------+------------------+------------------+------------------+------------------+
 
 +------------------+------------------+
@@ -309,51 +322,102 @@ Common Patterns
 Nested Configuration
 ~~~~~~~~~~~~~~~~~~~~
 
-To use nested configuration, use dot notation in your source keys:
+To use nested configuration, use double underscores (``__``) in your source keys, which will be normalized to dots (``.``):
 
 **Env**:
 
 .. code-block:: python
 
-   # Environment: APP_DB__HOST=localhost APP_DB__PORT=5432
-   source = Env(prefix="APP_")
+   @dataclass
+   class AppConfig:
+       db__host: str = field(metadata={"optional": True})
+       db__port: int = field(default=5432, metadata={"optional": True})
+   
+   # Environment: DB__HOST=localhost DB__PORT=5432
+   source = Env(model=AppConfig)
    # Returns: {"db.host": "localhost", "db.port": "5432"}
 
 **CLI**:
 
 .. code-block:: python
 
+   @dataclass
+   class AppConfig:
+       db__host: str = field(metadata={"optional": True})
+       db__port: int = field(default=5432, metadata={"optional": True})
+   
    # Command line: --db-host localhost --db-port 5432
-   source = CLI()
+   source = CLI(model=AppConfig)
    # Returns: {"db.host": "localhost", "db.port": "5432"}
    # Automatically maps to nested dataclass structure
+
+**DotEnv**:
+
+.. code-block:: python
+
+   @dataclass
+   class AppConfig:
+       db__host: str = field(metadata={"optional": True})
+       db__port: int = field(default=5432, metadata={"optional": True})
+   
+   # .env file: DB__HOST=localhost DB__PORT=5432
+   source = DotEnv(".env", model=AppConfig)
+   # Returns: {"db.host": "localhost", "db.port": "5432"}
 
 **Etcd**:
 
 .. code-block:: python
 
    # Etcd: /app/db/host = localhost, /app/db/port = 5432
-   source = Etcd(prefix="/app/")
+   source = Etcd(host="127.0.0.1", prefix="/app/", model=AppConfig)
    # Returns: {"db.host": "localhost", "db.port": "5432"}
 
-Prefix Isolation
-~~~~~~~~~~~~~~~~
+Model-Based Filtering
+~~~~~~~~~~~~~~~~~~~~~
 
-Use prefixes to isolate configuration from different applications:
+All sources (except Defaults) now use model-based filtering to control which variables are loaded:
 
 **Env**:
 
 .. code-block:: python
 
-   # Only load APP_* variables
-   source = Env(prefix="APP_")
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+   
+   # Environment: HOST=0.0.0.0 PORT=9000 OTHER_VAR=ignored
+   source = Env(model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": "9000"}
+   # OTHER_VAR is ignored because it's not in the model
 
-**Etcd**:
+**CLI**:
 
 .. code-block:: python
 
-   # Only load /app/* keys
-   source = Etcd(prefix="/app/")
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+   
+   # Command line: --host 0.0.0.0 --port 9000 --other-var ignored
+   source = CLI(model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": "9000"}
+   # --other-var is ignored because it's not in the model
+
+**DotEnv**:
+
+.. code-block:: python
+
+   @dataclass
+   class AppConfig:
+       host: str = field(metadata={"required": True})
+       port: int = field(default=9000, metadata={"optional": True})
+   
+   # .env file: HOST=0.0.0.0 PORT=9000 OTHER_VAR=ignored
+   source = DotEnv(".env", model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": "9000"}
+   # OTHER_VAR is ignored because it's not in the model
 
 Fields with Underscores (e.g., ``k8s_pod_name``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -368,8 +432,9 @@ each source handles overriding such fields:
 
    @dataclass
    class AppConfig:
-       k8s_pod_name: str = "default-pod"
+       k8s_pod_name: str = field(default="default-pod", metadata={"optional": True})
    
+   # Config automatically creates defaults from model
    # Returns: {"k8s_pod_name": "default-pod"}
    # Note: Single underscores are preserved by unified normalization
 
@@ -387,8 +452,12 @@ each source handles overriding such fields:
 
 .. code-block:: python
 
+   @dataclass
+   class AppConfig:
+       k8s_pod_name: str = field(metadata={"optional": True})
+   
    # .env file: K8S_POD_NAME=my-pod
-   source = DotEnv(".env")
+   source = DotEnv(".env", model=AppConfig)
    # Returns: {"k8s_pod_name": "my-pod"}
    # Note: Unified normalization preserves single underscores
 
@@ -396,8 +465,12 @@ each source handles overriding such fields:
 
 .. code-block:: python
 
-   # Environment: APP_K8S_POD_NAME=my-pod
-   source = Env(prefix="APP_")
+   @dataclass
+   class AppConfig:
+       k8s_pod_name: str = field(metadata={"optional": True})
+   
+   # Environment: K8S_POD_NAME=my-pod
+   source = Env(model=AppConfig)
    # Returns: {"k8s_pod_name": "my-pod"}
    # Note: Unified normalization preserves single underscores automatically
 
@@ -431,16 +504,18 @@ Best Practices
 
 2. **Nested configuration**: Use double underscores (``__``) in your source keys to create
    nested configuration:
-   - Environment: ``APP_DB__HOST=localhost`` → ``db.host``
+   - Environment: ``DB__HOST=localhost`` → ``db.host``
    - CLI: ``--db-host`` or ``--db_host`` → ``db.host``
+   - DotEnv: ``DB__HOST=localhost`` → ``db.host``
    - Etcd: ``/app/DB/Host`` → ``db.host``
 
 3. **Flat keys with underscores**: Use single underscores (``_``) for flat keys:
-   - Environment: ``APP_K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
+   - Environment: ``K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
    - CLI: ``--k8s-pod-name`` or ``--k8s_pod_name`` → ``k8s_pod_name``
    - DotEnv: ``K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
 
-4. **Prefix usage**: Use prefixes to avoid conflicts (e.g., ``APP_`` for environment variables)
+4. **Model-based filtering**: All sources (except Defaults) use model fields to filter which
+   variables are loaded. Define your model fields to match the normalized keys you want to use.
 
 5. **CLI flexibility**: CLI treats hyphens and underscores equivalently, so you can use
    either ``--db-host`` or ``--db_host`` (both work)
