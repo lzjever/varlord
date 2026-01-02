@@ -9,12 +9,13 @@
 
 ## ✨ Features
 
-- 🔧 **Multiple Sources**: Support for defaults, CLI arguments, environment variables, `.env` files, and optional etcd integration
+- 🔧 **Multiple Sources**: Support for defaults (automatic), CLI arguments, environment variables, `.env` files, and optional etcd integration
 - 🎯 **Simple Priority**: Priority determined by sources order (later overrides earlier)
 - 🔄 **Dynamic Updates**: Real-time configuration updates via etcd watch (optional)
 - 🛡️ **Type Safety**: Built-in support for dataclass models with automatic type conversion
 - 📝 **Logging Support**: Configurable logging to track configuration loading and merging
-- ✅ **Validation Framework**: Built-in validators for range, regex, choice, and custom validation
+- ✅ **Validation Framework**: Built-in value validators and required field validation with comprehensive error messages
+- 🔍 **Model-Driven Filtering**: All sources automatically filter by model fields - no prefix needed
 - 🔌 **Pluggable Architecture**: Clean source abstraction for easy extension
 - 📦 **Optional Dependencies**: Lightweight core with optional extras for dotenv and etcd
 - 🚀 **Production Ready**: Thread-safe, fail-safe update strategies, and comprehensive error handling
@@ -49,22 +50,22 @@ pip install -e ".[dev]"
 ### Basic Usage
 
 ```python
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from varlord import Config, sources
 
 @dataclass(frozen=True)
 class AppConfig:
-    host: str = "127.0.0.1"
-    port: int = 8000
-    debug: bool = False
+    host: str = field(default="127.0.0.1", metadata={"optional": True})
+    port: int = field(default=8000, metadata={"optional": True})
+    debug: bool = field(default=False, metadata={"optional": True})
 
-# Simple way: reorder sources (later sources override earlier ones)
+# Model defaults are automatically applied - no need for sources.Defaults
+# Sources filter by model fields automatically
 cfg = Config(
     model=AppConfig,
     sources=[
-        sources.Defaults(model=AppConfig),  # From model defaults
-        sources.Env(prefix="APP_"),        # APP_HOST, APP_PORT, etc.
-        sources.CLI(),                     # --host, --port, --debug (model auto-injected)
+        sources.Env(),        # HOST, PORT, DEBUG (filtered by model)
+        sources.CLI(),        # --host, --port, --debug (model auto-injected)
     ],
 )
 
@@ -79,7 +80,6 @@ print(app.port)
 # One-line setup for common cases
 cfg = Config.from_model(
     AppConfig,
-    env_prefix="APP_",
     cli=True,
     dotenv=".env",
 )
@@ -92,12 +92,12 @@ app = cfg.load()
 **Method 1: Reorder sources (recommended - simplest)**
 ```python
 # Priority is determined by sources order: later sources override earlier ones
+# Model defaults are automatically applied first (lowest priority)
 cfg = Config(
     model=AppConfig,
     sources=[
-        sources.Defaults(model=AppConfig),  # Lowest priority
-        sources.Env(prefix="APP_"),
-        sources.CLI(),  # Highest priority (last)
+        sources.Env(),  # Overrides defaults
+        sources.CLI(),  # Highest priority (overrides env)
     ],
 )
 ```
@@ -128,8 +128,7 @@ def on_change(new_config, diff):
 cfg = Config(
     model=AppConfig,
     sources=[
-        sources.Defaults(model=AppConfig),
-        sources.Env(prefix="APP_"),
+        sources.Env(),  # Defaults applied automatically
         sources.Etcd("http://127.0.0.1:2379", prefix="/app/", watch=True),
     ],
 )
@@ -155,19 +154,38 @@ app = cfg.load()  # Logs source loads, merges, type conversions
 
 ### Validation
 
-Add validation in your model's ``__post_init__``:
+**Value Validation**: Add validators in your model's ``__post_init__``:
 
 ```python
+from dataclasses import dataclass, field
 from varlord.validators import validate_range, validate_regex
 
 @dataclass(frozen=True)
 class AppConfig:
-    port: int = 8000
-    host: str = "127.0.0.1"
+    port: int = field(default=8000, metadata={"optional": True})
+    host: str = field(default="127.0.0.1", metadata={"optional": True})
 
     def __post_init__(self):
         validate_range(self.port, min=1, max=65535)
         validate_regex(self.host, r'^\d+\.\d+\.\d+\.\d+$')
+```
+
+**Required Field Validation**: All fields must explicitly specify ``metadata={"required": True}`` or ``metadata={"optional": True}``:
+
+```python
+from dataclasses import dataclass, field
+from varlord.model_validation import RequiredFieldError
+
+@dataclass(frozen=True)
+class AppConfig:
+    api_key: str = field(metadata={"required": True})  # Must be provided
+    host: str = field(default="127.0.0.1", metadata={"optional": True})
+
+cfg = Config(model=AppConfig, sources=[])
+try:
+    app = cfg.load()  # Raises RequiredFieldError if api_key not provided
+except RequiredFieldError as e:
+    print(f"Missing required fields: {e.missing_fields}")
 ```
 
 ## 📚 Documentation
@@ -202,7 +220,9 @@ Automatic conversion from strings (env vars, CLI) to model field types (int, flo
 
 ### Validation
 
-Add validators in your model's `__post_init__` method to validate configuration values.
+**Value Validation**: Add validators in your model's `__post_init__` method to validate configuration values.
+
+**Required Field Validation**: All fields must explicitly specify `metadata={"required": True}` or `metadata={"optional": True}`. Required fields are automatically validated before `__post_init__` is called.
 
 ### ConfigStore
 
