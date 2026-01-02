@@ -28,12 +28,16 @@
 
 That's it! The Makefile automatically uses `uv` if available, otherwise falls back to `pip`.
 
-## What Changed from Conda?
+## What is uv?
 
-- ✅ **Faster**: uv is 10-100x faster than pip/conda
-- ✅ **Simpler**: One tool for virtualenv, pip, and dependency management
-- ✅ **Reproducible**: `uv.lock` ensures consistent builds
-- ✅ **Compatible**: Works with existing `pyproject.toml`
+`uv` is an extremely fast Python package installer and resolver written in Rust. It's designed to be a drop-in replacement for `pip`, `pip-tools`, `virtualenv`, and `pipx`.
+
+### Benefits
+
+- ⚡ **Faster**: 10-100x faster than pip/conda
+- 🔒 **Reproducible**: `uv.lock` ensures consistent builds
+- 🎯 **Simple**: One tool for virtualenv, pip, and dependency management
+- 🔄 **Compatible**: Works with existing `pyproject.toml`
 
 ## Common Commands
 
@@ -46,4 +50,37 @@ make docs           # Build documentation
 make check          # Run all checks
 ```
 
-For more details, see [UV_SETUP.md](UV_SETUP.md).
+## Understanding Dependency Groups vs Extras
+
+This project uses both dependency groups and extras:
+
+- **Dependency groups** (`dev`, `docs`): Development dependencies that are not published to PyPI. The `dev` group is installed by default with `uv sync`.
+- **Extras** (`dotenv`, `etcd`): Optional runtime features that are published to PyPI.
+
+## Troubleshooting
+
+### uv command not found
+
+Make sure `~/.local/bin` is in your PATH:
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Virtual environment issues
+
+Clear and recreate:
+```bash
+rm -rf .venv
+uv sync --group docs --all-extras
+```
+
+### Lock file conflicts
+
+Regenerate the lock file:
+```bash
+rm uv.lock
+uv lock
+uv sync --group docs --all-extras
+```
+
+For more details, see [CONTRIBUTING.md](CONTRIBUTING.md).

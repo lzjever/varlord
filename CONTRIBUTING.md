@@ -23,6 +23,8 @@ Thank you for your interest in contributing to Varlord!
 
 That's it! You're ready to contribute.
 
+For detailed setup instructions, see [SETUP.md](SETUP.md).
+
 ## Development Workflow
 
 ### Standard Development
@@ -125,4 +127,3 @@ Documentation is built using Sphinx. See `docs/` directory for source files.
 ## Questions?
 
 Feel free to open an issue or start a discussion!
-
