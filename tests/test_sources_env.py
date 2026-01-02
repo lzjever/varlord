@@ -8,19 +8,29 @@ from varlord.sources.env import Env
 
 @dataclass
 class EnvTestConfig:
-    host: str = field(default="localhost", )
-    port: int = field(default=8000, )
+    host: str = field(
+        default="localhost",
+    )
+    port: int = field(
+        default=8000,
+    )
 
 
 @dataclass
 class DBConfig:
-    host: str = field(default="localhost", )
-    port: int = field(default=5432, )
+    host: str = field(
+        default="localhost",
+    )
+    port: int = field(
+        default=5432,
+    )
 
 
 @dataclass
 class NestedTestConfig:
-    db: DBConfig = field(default_factory=lambda: DBConfig(), )
+    db: DBConfig = field(
+        default_factory=lambda: DBConfig(),
+    )
 
 
 def test_env_basic(monkeypatch):

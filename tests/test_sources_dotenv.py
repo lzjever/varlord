@@ -12,8 +12,12 @@ from varlord.sources.dotenv import DotEnv
 @dataclass
 class DotEnvTestConfig:
     api_key: str = field()
-    host: str = field(default="localhost", )
-    port: int = field(default=8000, )
+    host: str = field(
+        default="localhost",
+    )
+    port: int = field(
+        default=8000,
+    )
 
 
 def test_dotenv_basic():
@@ -56,7 +60,9 @@ def test_dotenv_nested_keys():
     @dataclass
     class DBConfig:
         host: str = field()
-        port: int = field(default=5432, )
+        port: int = field(
+            default=5432,
+        )
 
     @dataclass
     class AppConfig:

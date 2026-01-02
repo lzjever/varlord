@@ -16,7 +16,6 @@ from typing import Optional, Union, List, Dict
 
 from varlord import Config, sources
 from varlord.model_validation import (
-    ModelDefinitionError,
     RequiredFieldError,
     validate_model_definition,
 )
@@ -37,6 +36,7 @@ class TestDefaultRequiredBehavior:
 
         # Verify field is required
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         api_key_info = next(f for f in field_infos if f.name == "api_key")
         assert api_key_info.required is True
@@ -55,6 +55,7 @@ class TestDefaultRequiredBehavior:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         for field_info in field_infos:
             assert field_info.required is True
@@ -75,6 +76,7 @@ class TestDefaultRequiredBehavior:
         validate_model_definition(AppConfig)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(AppConfig)
         db_host_info = next(f for f in field_infos if f.normalized_key == "db.host")
         assert db_host_info.required is True
@@ -89,6 +91,7 @@ class TestDefaultRequiredBehavior:
 
         # Should not raise
         from varlord import Config
+
         cfg = Config(model=TestConfig, sources=[])
         assert cfg is not None
 
@@ -108,6 +111,7 @@ class TestOptionalTypeAnnotations:
 
         # Verify field is optional
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         api_key_info = next(f for f in field_infos if f.name == "api_key")
         assert api_key_info.optional is True
@@ -123,6 +127,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         port_info = next(f for f in field_infos if f.name == "port")
         assert port_info.optional is True
@@ -137,6 +142,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         debug_info = next(f for f in field_infos if f.name == "debug")
         assert debug_info.optional is True
@@ -151,6 +157,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         items_info = next(f for f in field_infos if f.name == "items")
         assert items_info.optional is True
@@ -165,6 +172,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         settings_info = next(f for f in field_infos if f.name == "settings")
         assert settings_info.optional is True
@@ -179,6 +187,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         api_key_info = next(f for f in field_infos if f.name == "api_key")
         assert api_key_info.optional is True
@@ -193,6 +202,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         port_info = next(f for f in field_infos if f.name == "port")
         assert port_info.optional is True
@@ -211,6 +221,7 @@ class TestOptionalTypeAnnotations:
         validate_model_definition(AppConfig)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(AppConfig)
         db_host_info = next(f for f in field_infos if f.normalized_key == "db.host")
         assert db_host_info.optional is True
@@ -224,6 +235,7 @@ class TestOptionalTypeAnnotations:
 
         # Should not raise
         from varlord import Config
+
         cfg = Config(model=TestConfig, sources=[])
         assert cfg is not None
 
@@ -383,6 +395,7 @@ class TestOptionalWithDefaults:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
         timeout_info = next(f for f in field_infos if f.name == "timeout")
         assert timeout_info.optional is True
@@ -400,8 +413,9 @@ class TestOptionalWithDefaults:
         validate_model_definition(Config)
 
         from varlord.metadata import get_all_fields_info
+
         field_infos = get_all_fields_info(Config)
-        
+
         api_key_info = next(f for f in field_infos if f.name == "api_key")
         assert api_key_info.required is True
         assert api_key_info.optional is False

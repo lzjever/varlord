@@ -96,6 +96,7 @@ def get_all_fields_info(model: Type[Any], prefix: str = "") -> List[FieldInfo]:
         # 2. If has default or default_factory → optional
         # 3. Otherwise → required
         from typing import get_origin, get_args, Union
+
         is_optional_type = False
         origin = get_origin(field.type)
         if origin is Union:

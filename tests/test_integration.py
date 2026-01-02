@@ -18,12 +18,20 @@ def test_full_workflow():
 
     @dataclass(frozen=True)
     class AppConfig:
-        host: str = field(default="127.0.0.1", )
-        port: int = field(default=8000, )
-        debug: bool = field(default=False, )
-        timeout: float = field(default=30.0, )
+        host: str = field(
+            default="127.0.0.1",
+        )
+        port: int = field(
+            default=8000,
+        )
+        debug: bool = field(
+            default=False,
+        )
+        timeout: float = field(
+            default=30.0,
+        )
         api_key: str = field(
-            default=None, 
+            default=None,
         )  # Use str instead of Optional[str]
 
     # Set environment variables
@@ -61,7 +69,9 @@ def test_priority_workflow():
 
     @dataclass(frozen=True)
     class AppConfig:
-        value: str = field(default="default", )
+        value: str = field(
+            default="default",
+        )
 
     os.environ["VALUE"] = "env"
 
@@ -96,8 +106,12 @@ def test_per_key_priority():
 
     @dataclass(frozen=True)
     class AppConfig:
-        public: str = field(default="default-public", )
-        secret: str = field(default="default-secret", )
+        public: str = field(
+            default="default-public",
+        )
+        secret: str = field(
+            default="default-secret",
+        )
 
     os.environ["PUBLIC"] = "env-public"
     os.environ["SECRET"] = "env-secret"

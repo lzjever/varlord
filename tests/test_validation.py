@@ -5,7 +5,6 @@ Tests for validation module.
 import pytest
 from dataclasses import dataclass, field
 from varlord.model_validation import (
-    ModelDefinitionError,
     RequiredFieldError,
     validate_model_definition,
     validate_config,
@@ -18,7 +17,9 @@ def test_validate_model_definition_success():
     @dataclass
     class Config:
         api_key: str = field()  # Required by default
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     # Should not raise
     validate_model_definition(Config)
@@ -30,7 +31,9 @@ def test_validate_model_definition_nested():
     @dataclass
     class DBConfig:
         host: str = field()  # Required by default
-        port: int = field(default=5432, )
+        port: int = field(
+            default=5432,
+        )
 
     @dataclass
     class AppConfig:
@@ -46,7 +49,9 @@ def test_validate_config_success():
     @dataclass
     class Config:
         api_key: str = field()  # Required by default
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     config_dict = {
         "host": "0.0.0.0",
@@ -63,7 +68,9 @@ def test_validate_config_missing_required():
     @dataclass
     class Config:
         api_key: str = field()  # Required by default
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     config_dict = {
         "host": "0.0.0.0",
@@ -98,7 +105,9 @@ def test_validate_config_nested():
     @dataclass
     class DBConfig:
         host: str = field()  # Required by default
-        port: int = field(default=5432, )
+        port: int = field(
+            default=5432,
+        )
 
     @dataclass
     class AppConfig:
@@ -128,6 +137,7 @@ def test_validate_model_definition_accepts_optional_type():
 
     # Verify field is optional
     from varlord.metadata import get_all_fields_info
+
     field_infos = get_all_fields_info(Config)
     api_key_info = next(f for f in field_infos if f.name == "api_key")
     assert api_key_info.optional is True
@@ -147,6 +157,7 @@ def test_validate_model_definition_accepts_union_none():
 
     # Verify field is optional
     from varlord.metadata import get_all_fields_info
+
     field_infos = get_all_fields_info(Config)
     api_key_info = next(f for f in field_infos if f.name == "api_key")
     assert api_key_info.optional is True
@@ -172,6 +183,7 @@ def test_validate_model_definition_default_required():
 
     # Verify Config1 field is required
     from varlord.metadata import get_all_fields_info
+
     field_infos = get_all_fields_info(Config1)
     api_key_info = next(f for f in field_infos if f.name == "api_key")
     assert api_key_info.required is True

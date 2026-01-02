@@ -20,10 +20,18 @@ def test_getting_started_basic():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="127.0.0.1", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
-        debug: bool = field(default=False, )  # noqa: F821
-        app_name: str = field(default="MyApp", )  # noqa: F821
+        host: str = field(
+            default="127.0.0.1",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
+        debug: bool = field(
+            default=False,
+        )  # noqa: F821
+        app_name: str = field(
+            default="MyApp",
+        )  # noqa: F821
 
     cfg = Config(
         model=AppConfig,
@@ -44,8 +52,12 @@ def test_getting_started_access():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="127.0.0.1", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="127.0.0.1",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     cfg = Config(
         model=AppConfig,
@@ -71,9 +83,15 @@ def test_multiple_sources_priority():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="127.0.0.1", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
-        debug: bool = field(default=False, )  # noqa: F821
+        host: str = field(
+            default="127.0.0.1",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
+        debug: bool = field(
+            default=False,
+        )  # noqa: F821
 
     try:
         os.environ["HOST"] = "0.0.0.0"
@@ -104,9 +122,15 @@ def test_multiple_sources_cli():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="127.0.0.1", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
-        debug: bool = field(default=False, )  # noqa: F821
+        host: str = field(
+            default="127.0.0.1",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
+        debug: bool = field(
+            default=False,
+        )  # noqa: F821
 
     original_argv = sys.argv[:]
     try:
@@ -136,8 +160,12 @@ def test_multiple_sources_from_model():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="127.0.0.1", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="127.0.0.1",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     try:
         os.environ["HOST"] = "0.0.0.0"
@@ -169,16 +197,26 @@ def test_nested_configuration_basic():
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
-        host: str = field(default="localhost", )  # noqa: F821
-        port: int = field(default=5432, )  # noqa: F821
-        database: str = field(default="mydb", )  # noqa: F821
+        host: str = field(
+            default="localhost",
+        )  # noqa: F821
+        port: int = field(
+            default=5432,
+        )  # noqa: F821
+        database: str = field(
+            default="mydb",
+        )  # noqa: F821
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
         db: DBConfig = field(
-            default_factory=lambda: DBConfig(), 
+            default_factory=lambda: DBConfig(),
         )  # noqa: F821
 
     cfg = Config(
@@ -201,16 +239,26 @@ def test_nested_configuration_env():
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
-        host: str = field(default="localhost", )  # noqa: F821
-        port: int = field(default=5432, )  # noqa: F821
-        database: str = field(default="mydb", )  # noqa: F821
+        host: str = field(
+            default="localhost",
+        )  # noqa: F821
+        port: int = field(
+            default=5432,
+        )  # noqa: F821
+        database: str = field(
+            default="mydb",
+        )  # noqa: F821
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
         db: DBConfig = field(
-            default_factory=lambda: DBConfig(), 
+            default_factory=lambda: DBConfig(),
         )  # noqa: F821
 
     try:
@@ -244,15 +292,23 @@ def test_nested_configuration_cli():
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
-        host: str = field(default="localhost", )  # noqa: F821
-        port: int = field(default=5432, )  # noqa: F821
+        host: str = field(
+            default="localhost",
+        )  # noqa: F821
+        port: int = field(
+            default=5432,
+        )  # noqa: F821
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
         db: DBConfig = field(
-            default_factory=lambda: DBConfig(), 
+            default_factory=lambda: DBConfig(),
         )  # noqa: F821
 
     original_argv = sys.argv[:]
@@ -282,22 +338,32 @@ def test_nested_configuration_deep():
 
     @dataclass(frozen=True)  # noqa: F821
     class CacheConfig:
-        enabled: bool = field(default=False, )  # noqa: F821
-        ttl: int = field(default=3600, )  # noqa: F821
+        enabled: bool = field(
+            default=False,
+        )  # noqa: F821
+        ttl: int = field(
+            default=3600,
+        )  # noqa: F821
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
-        host: str = field(default="localhost", )  # noqa: F821
-        port: int = field(default=5432, )  # noqa: F821
+        host: str = field(
+            default="localhost",
+        )  # noqa: F821
+        port: int = field(
+            default=5432,
+        )  # noqa: F821
         cache: CacheConfig = field(  # noqa: F821
-            default_factory=lambda: CacheConfig(), 
+            default_factory=lambda: CacheConfig(),
         )
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
         db: DBConfig = field(
-            default_factory=lambda: DBConfig(), 
+            default_factory=lambda: DBConfig(),
         )  # noqa: F821
 
     try:
@@ -333,8 +399,12 @@ def test_validation_basic():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
         def __post_init__(self):
             validate_not_empty(self.host)
@@ -360,7 +430,9 @@ def test_validation_multiple_sources():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        port: int = field(default=8000, )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
         def __post_init__(self):
             validate_port(self.port)
@@ -390,8 +462,12 @@ def test_validation_nested():
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
-        host: str = field(default="localhost", )  # noqa: F821
-        port: int = field(default=5432, )  # noqa: F821
+        host: str = field(
+            default="localhost",
+        )  # noqa: F821
+        port: int = field(
+            default=5432,
+        )  # noqa: F821
 
         def __post_init__(self):
             validate_not_empty(self.host)
@@ -399,10 +475,14 @@ def test_validation_nested():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
         db: DBConfig = field(
-            default_factory=lambda: DBConfig(), 
+            default_factory=lambda: DBConfig(),
         )  # noqa: F821
 
         def __post_init__(self):
@@ -426,9 +506,11 @@ def test_validation_cross_field():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        app_port: int = field(default=8000, )  # noqa: F821
+        app_port: int = field(
+            default=8000,
+        )  # noqa: F821
         db_port: int = field(  # noqa: F821
-            default=8000, 
+            default=8000,
         )  # Same as app_port - will conflict!
 
         def __post_init__(self):
@@ -464,8 +546,12 @@ def test_dynamic_updates_basic():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     cfg = Config(
         model=AppConfig,
@@ -487,7 +573,9 @@ def test_dynamic_updates_manual_reload():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        port: int = field(default=8000, )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     cfg = Config(
         model=AppConfig,
@@ -516,7 +604,9 @@ def test_dynamic_updates_subscribe():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        port: int = field(default=8000, )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     changes = []
 
@@ -557,9 +647,15 @@ def test_advanced_priority_policy():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
-        api_key: str = field(default="default-key", )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
+        api_key: str = field(
+            default="default-key",
+        )  # noqa: F821
 
     try:
         os.environ["HOST"] = "env-host"
@@ -623,8 +719,12 @@ def test_advanced_custom_source():
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
-        host: str = field(default="0.0.0.0", )  # noqa: F821
-        port: int = field(default=8000, )  # noqa: F821
+        host: str = field(
+            default="0.0.0.0",
+        )  # noqa: F821
+        port: int = field(
+            default=8000,
+        )  # noqa: F821
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump({"host": "json-host", "port": 7000}, f)

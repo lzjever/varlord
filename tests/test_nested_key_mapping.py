@@ -6,15 +6,25 @@ from varlord import Config, sources
 
 @dataclass
 class DBConfig:
-    host: str = field(default="localhost", )
-    port: int = field(default=5432, )
+    host: str = field(
+        default="localhost",
+    )
+    port: int = field(
+        default=5432,
+    )
 
 
 @dataclass
 class AppConfig:
-    host: str = field(default="0.0.0.0", )
-    port: int = field(default=8000, )
-    db: DBConfig = field(default_factory=DBConfig, )
+    host: str = field(
+        default="0.0.0.0",
+    )
+    port: int = field(
+        default=8000,
+    )
+    db: DBConfig = field(
+        default_factory=DBConfig,
+    )
 
 
 def test_cli_nested_key_mapping():

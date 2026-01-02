@@ -39,9 +39,7 @@ class ModelDefinitionError(VarlordError):
         self.model_name = model_name
         self.reason = reason
 
-        message = (
-            f"Field '{field_name}' in model '{model_name}' has an invalid definition."
-        )
+        message = f"Field '{field_name}' in model '{model_name}' has an invalid definition."
         super().__init__(message)
 
 

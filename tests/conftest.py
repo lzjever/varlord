@@ -51,9 +51,17 @@ def sample_config_model():
 
     @dataclass(frozen=True)
     class SampleConfig:
-        host: str = field(default="127.0.0.1", )
-        port: int = field(default=8000, )
-        debug: bool = field(default=False, )
-        timeout: float = field(default=30.0, )
+        host: str = field(
+            default="127.0.0.1",
+        )
+        port: int = field(
+            default=8000,
+        )
+        debug: bool = field(
+            default=False,
+        )
+        timeout: float = field(
+            default=30.0,
+        )
 
     return SampleConfig

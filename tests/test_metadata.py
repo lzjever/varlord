@@ -17,7 +17,9 @@ def test_get_all_fields_info_basic():
     class Config:
         api_key: str = field(metadata={"description": "API key"})
         host: str = field(default="localhost", metadata={"optional": True, "description": "Host"})
-        port: int = field(default=8000, )
+        port: int = field(
+            default=8000,
+        )
 
     fields = get_all_fields_info(Config)
 
@@ -44,7 +46,9 @@ def test_get_all_fields_info_nested():
     @dataclass
     class DBConfig:
         host: str = field()
-        port: int = field(default=5432, )
+        port: int = field(
+            default=5432,
+        )
 
     @dataclass
     class AppConfig:
@@ -90,8 +94,12 @@ def test_get_field_info():
 
     @dataclass
     class Config:
-        host: str = field(default="localhost", )
-        port: int = field(default=8000, )
+        host: str = field(
+            default="localhost",
+        )
+        port: int = field(
+            default=8000,
+        )
 
     field_info = get_field_info(Config, "host")
     assert field_info is not None

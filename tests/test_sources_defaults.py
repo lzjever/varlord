@@ -23,8 +23,12 @@ def test_defaults_with_factory():
 
     @dataclass
     class Config:
-        items: list = field(default_factory=list, )
-        count: int = field(default=0, )
+        items: list = field(
+            default_factory=list,
+        )
+        count: int = field(
+            default=0,
+        )
 
     source = Defaults(model=Config)
     config = source.load()
@@ -60,8 +64,12 @@ def test_defaults_precomputed():
 
     @dataclass
     class Config:
-        host: str = field(default="localhost", )
-        port: int = field(default=8000, )
+        host: str = field(
+            default="localhost",
+        )
+        port: int = field(
+            default=8000,
+        )
 
     source = Defaults(model=Config)
     source._precomputed_defaults = {"host": "precomputed", "port": 9999}

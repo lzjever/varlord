@@ -14,7 +14,9 @@ def test_config_validate_independent():
     @dataclass
     class AppConfig:
         api_key: str = field()
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     cfg = Config(
         model=AppConfig,
@@ -44,7 +46,9 @@ def test_config_validate_loads_config():
     @dataclass
     class AppConfig:
         api_key: str = field()
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     # No sources provide api_key, so validation should fail
     cfg = Config(
@@ -64,9 +68,11 @@ def test_config_load_with_validate_false():
     @dataclass
     class AppConfig:
         api_key: str = field(
-            default="", 
+            default="",
         )  # Use optional to avoid init error
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     cfg = Config(
         model=AppConfig,
@@ -85,7 +91,9 @@ def test_config_load_with_validate_true():
     @dataclass
     class AppConfig:
         api_key: str = field()
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     cfg = Config(
         model=AppConfig,
@@ -125,7 +133,9 @@ def test_config_multiple_missing_fields():
     class AppConfig:
         api_key: str = field()
         secret: str = field()
-        host: str = field(default="localhost", )
+        host: str = field(
+            default="localhost",
+        )
 
     cfg = Config(
         model=AppConfig,
@@ -146,7 +156,9 @@ def test_config_nested_validation():
     @dataclass
     class DBConfig:
         host: str = field()
-        port: int = field(default=5432, )
+        port: int = field(
+            default=5432,
+        )
 
     @dataclass
     class AppConfig:

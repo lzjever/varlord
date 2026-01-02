@@ -8,8 +8,12 @@ from varlord import Config, sources
 
 @dataclass
 class AppConfig:
-    host: str = field(default="default", )
-    port: int = field(default=8000, )
+    host: str = field(
+        default="default",
+    )
+    port: int = field(
+        default=8000,
+    )
 
 
 def test_env_case_normalization():
