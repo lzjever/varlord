@@ -121,12 +121,21 @@ check: lint format-check test
 	@echo "All checks passed!"
 
 build: clean
+	@if [ -n "$(UV)" ]; then \
+		uv sync --all-extras --dev; \
+	fi
 	$(PYTHON_CMD) -m build
 
 sdist: clean
+	@if [ -n "$(UV)" ]; then \
+		uv sync --all-extras --dev; \
+	fi
 	$(PYTHON_CMD) -m build --sdist
 
 wheel: clean
+	@if [ -n "$(UV)" ]; then \
+		uv sync --all-extras --dev; \
+	fi
 	$(PYTHON_CMD) -m build --wheel
 
 check-package: build
