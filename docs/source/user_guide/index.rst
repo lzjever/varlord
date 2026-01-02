@@ -9,6 +9,7 @@ This guide covers all aspects of using Varlord.
    configuration_models
    metadata_fields
    sources
+   etcd
    key_mapping
    cli_commands
    custom_sources

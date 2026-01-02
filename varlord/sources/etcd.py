@@ -7,14 +7,19 @@ This is an optional source that requires the 'etcd' extra.
 
 from __future__ import annotations
 from typing import Mapping, Any, Optional, Iterator, Type
+import os
 import threading
 import warnings
 
 try:
-    # Suppress etcd3 deprecation warnings
+    # Suppress etcd3 deprecation warnings from protobuf
     with warnings.catch_warnings():
-        warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3")
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
         import etcd3
+
+        # Also suppress warnings from etcd3 submodules
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3")
+        warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3.*")
 except ImportError:
     etcd3 = None  # type: ignore
 
@@ -28,13 +33,34 @@ class Etcd(Source):
 
     Supports:
     - Loading configuration from a prefix
+    - TLS/SSL certificate authentication
+    - User authentication
     - Watching for changes (dynamic updates)
     - Automatic reconnection on connection loss
+    - Configuration from environment variables via from_env()
 
-    Example:
-        >>> source = Etcd("http://127.0.0.1:2379", prefix="/app/")
+    Basic Example:
+        >>> source = Etcd(
+        ...     host="127.0.0.1",
+        ...     port=2379,
+        ...     prefix="/app/",
+        ... )
         >>> source.load()
         {'host': '0.0.0.0', 'port': '9000'}
+
+    With TLS:
+        >>> source = Etcd(
+        ...     host="192.168.0.220",
+        ...     port=2379,
+        ...     prefix="/app/",
+        ...     ca_cert="./cert/ca.cert.pem",
+        ...     cert_key="./cert/key.pem",
+        ...     cert_cert="./cert/cert.pem",
+        ... )
+
+    From Environment Variables (Recommended):
+        >>> # Set ETCD_HOST, ETCD_PORT, ETCD_CA_CERT, etc.
+        >>> source = Etcd.from_env(prefix="/app/")
     """
 
     def __init__(
@@ -45,7 +71,12 @@ class Etcd(Source):
         watch: bool = False,
         timeout: Optional[int] = None,
         model: Optional[Type[Any]] = None,
-    ):
+        ca_cert: Optional[str] = None,
+        cert_key: Optional[str] = None,
+        cert_cert: Optional[str] = None,
+        user: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> None:
         """Initialize Etcd source.
 
         Args:
@@ -57,6 +88,11 @@ class Etcd(Source):
             model: Model to filter etcd keys.
                   Only keys that map to model fields will be loaded.
                   Model is required and will be auto-injected by Config.
+            ca_cert: Path to CA certificate file for TLS
+            cert_key: Path to client key file for TLS
+            cert_cert: Path to client certificate file for TLS
+            user: Username for authentication (optional)
+            password: Password for authentication (optional)
 
         Raises:
             ImportError: If etcd3 is not installed
@@ -71,6 +107,11 @@ class Etcd(Source):
         self._prefix = prefix.rstrip("/") + "/" if prefix else "/"
         self._watch = watch
         self._timeout = timeout
+        self._ca_cert = ca_cert
+        self._cert_key = cert_key
+        self._cert_cert = cert_cert
+        self._user = user
+        self._password = password
 
         # Client will be created lazily
         self._client: Optional[Any] = None
@@ -81,9 +122,25 @@ class Etcd(Source):
         if self._client is None:
             with self._lock:
                 if self._client is None:
-                    self._client = etcd3.client(
-                        host=self._host, port=self._port, timeout=self._timeout
-                    )
+                    # Build client kwargs
+                    client_kwargs = {
+                        "host": self._host,
+                        "port": self._port,
+                    }
+                    if self._timeout is not None:
+                        client_kwargs["timeout"] = self._timeout
+                    if self._ca_cert is not None:
+                        client_kwargs["ca_cert"] = self._ca_cert
+                    if self._cert_key is not None:
+                        client_kwargs["cert_key"] = self._cert_key
+                    if self._cert_cert is not None:
+                        client_kwargs["cert_cert"] = self._cert_cert
+                    if self._user is not None:
+                        client_kwargs["user"] = self._user
+                    if self._password is not None:
+                        client_kwargs["password"] = self._password
+
+                    self._client = etcd3.client(**client_kwargs)
         return self._client
 
     @property
@@ -179,10 +236,20 @@ class Etcd(Source):
         if not self._watch:
             return iter([])
 
+        if not self._model:
+            raise ValueError(
+                "Etcd source requires model for watch (should be auto-injected by Config)"
+            )
+
+        from varlord.metadata import get_all_field_keys
+
+        # Get all valid field keys from model (same as load method)
+        valid_keys = get_all_field_keys(self._model)
+
         client = self._get_client()
         prefix_bytes = self._prefix.encode("utf-8")
 
-        # Get initial state
+        # Get initial state (decode values same way as load method)
         initial_state: dict[str, Any] = {}
         for value, metadata in client.get_prefix(prefix_bytes):
             if metadata is None:
@@ -193,10 +260,29 @@ class Etcd(Source):
             key_str = key_bytes[len(prefix_bytes) :].decode("utf-8")
             key_str = key_str.replace("/", "__")
             normalized_key = normalize_key(key_str)
-            initial_state[normalized_key] = value
+
+            # Only include keys that match model fields (same as load method)
+            if normalized_key not in valid_keys:
+                continue
+
+            # Decode value same way as load method
+            decoded_value = value
+            if value:
+                try:
+                    decoded_value = value.decode("utf-8")
+                    import json
+
+                    try:
+                        decoded_value = json.loads(decoded_value)
+                    except (ValueError, TypeError):
+                        pass
+                except UnicodeDecodeError:
+                    decoded_value = value
+            initial_state[normalized_key] = decoded_value
 
         # Watch for changes
-        events_iterator = client.watch_prefix(prefix_bytes)
+        # watch_prefix returns (events_iterator, cancel) tuple
+        events_iterator, cancel = client.watch_prefix(prefix_bytes)
 
         for event in events_iterator:
             try:
@@ -212,46 +298,152 @@ class Etcd(Source):
                 key_str = key_str.replace("/", "__")
                 normalized_key = normalize_key(key_str)
 
+                # Only process events for keys that match model fields (same as load method)
+                if normalized_key not in valid_keys:
+                    continue
+
                 # Determine event type and values
-                if hasattr(event, "type"):
-                    if event.type == etcd3.events.PUT_EVENT:
-                        # Key was added or modified
-                        old_value = initial_state.get(normalized_key)
-                        new_value = event.value
-                        if new_value:
+                # etcd3 events are PutEvent or DeleteEvent instances, not objects with type attribute
+                if isinstance(event, etcd3.events.PutEvent):
+                    # Key was added or modified
+                    old_value = initial_state.get(normalized_key)
+                    new_value = event.value
+                    if new_value:
+                        try:
+                            new_value = new_value.decode("utf-8")
+                            import json
+
                             try:
-                                new_value = new_value.decode("utf-8")
-                                import json
-
-                                try:
-                                    new_value = json.loads(new_value)
-                                except (ValueError, TypeError):
-                                    pass
-                            except UnicodeDecodeError:
+                                new_value = json.loads(new_value)
+                            except (ValueError, TypeError):
                                 pass
+                        except UnicodeDecodeError:
+                            pass
 
-                        event_type = "added" if old_value is None else "modified"
-                        initial_state[normalized_key] = new_value
+                    event_type = "added" if old_value is None else "modified"
+                    initial_state[normalized_key] = new_value
 
-                        yield ChangeEvent(
-                            key=normalized_key,
-                            old_value=old_value,
-                            new_value=new_value,
-                            event_type=event_type,
-                        )
-                    elif event.type == etcd3.events.DELETE_EVENT:
-                        # Key was deleted
-                        old_value = initial_state.pop(normalized_key, None)
-                        yield ChangeEvent(
-                            key=normalized_key,
-                            old_value=old_value,
-                            new_value=None,
-                            event_type="deleted",
-                        )
+                    yield ChangeEvent(
+                        key=normalized_key,
+                        old_value=old_value,
+                        new_value=new_value,
+                        event_type=event_type,
+                    )
+                elif isinstance(event, etcd3.events.DeleteEvent):
+                    # Key was deleted
+                    old_value = initial_state.pop(normalized_key, None)
+                    yield ChangeEvent(
+                        key=normalized_key,
+                        old_value=old_value,
+                        new_value=None,
+                        event_type="deleted",
+                    )
             except Exception:
                 # Skip malformed events
                 continue
 
+    @classmethod
+    def from_env(
+        cls,
+        prefix: Optional[str] = None,
+        watch: Optional[bool] = None,
+        timeout: Optional[int] = None,
+        model: Optional[Type[Any]] = None,
+        env_prefix: str = "ETCD_",
+    ) -> "Etcd":
+        """Create Etcd source from environment variables.
+
+        Reads etcd connection configuration from environment variables:
+        - ETCD_HOST (default: "127.0.0.1")
+        - ETCD_PORT (default: 2379)
+        - ETCD_PREFIX (default: "/")
+        - ETCD_CA_CERT (optional: path to CA certificate)
+        - ETCD_CERT_KEY (optional: path to client key)
+        - ETCD_CERT_CERT (optional: path to client certificate)
+        - ETCD_USER (optional: username for authentication)
+        - ETCD_PASSWORD (optional: password for authentication)
+        - ETCD_WATCH (optional: "true" or "1" to enable watch)
+        - ETCD_TIMEOUT (optional: connection timeout in seconds)
+
+        Args:
+            prefix: Key prefix to load (overrides ETCD_PREFIX if provided)
+            watch: Whether to enable watch support (overrides ETCD_WATCH if provided)
+            timeout: Connection timeout in seconds (overrides ETCD_TIMEOUT if provided)
+            model: Model to filter etcd keys (auto-injected by Config if not provided)
+            env_prefix: Prefix for environment variable names (default: "ETCD_")
+
+        Returns:
+            Etcd source instance configured from environment variables
+
+        Example:
+            >>> # Set environment variables:
+            >>> # export ETCD_HOST=192.168.0.220
+            >>> # export ETCD_PORT=2379
+            >>> # export ETCD_CA_CERT=./cert/ca.cert.pem
+            >>> # export ETCD_CERT_KEY=./cert/key.pem
+            >>> # export ETCD_CERT_CERT=./cert/cert.pem
+            >>> source = Etcd.from_env(prefix="/app/")
+        """
+        # Read configuration from environment variables
+        host = os.environ.get(f"{env_prefix}HOST", "127.0.0.1")
+        port = int(os.environ.get(f"{env_prefix}PORT", "2379"))
+
+        # Use provided prefix or read from env
+        if prefix is not None:
+            etcd_prefix = prefix
+        else:
+            etcd_prefix = os.environ.get(f"{env_prefix}PREFIX")
+            if etcd_prefix is None:
+                etcd_prefix = "/"
+
+        # TLS certificates (optional)
+        ca_cert = os.environ.get(f"{env_prefix}CA_CERT")
+        cert_key = os.environ.get(f"{env_prefix}CERT_KEY")
+        cert_cert = os.environ.get(f"{env_prefix}CERT_CERT")
+
+        # Authentication (optional)
+        user = os.environ.get(f"{env_prefix}USER")
+        password = os.environ.get(f"{env_prefix}PASSWORD")
+
+        # Watch (can be overridden by parameter)
+        # If watch parameter is explicitly provided (not None), use it
+        # Otherwise, read from environment variable
+        if watch is not None:
+            etcd_watch = watch
+        else:
+            watch_env = os.environ.get(f"{env_prefix}WATCH", "").lower()
+            etcd_watch = watch_env in ("true", "1", "yes", "on")
+
+        # Timeout (can be overridden by parameter)
+        etcd_timeout = timeout
+        if etcd_timeout is None:
+            timeout_str = os.environ.get(f"{env_prefix}TIMEOUT")
+            if timeout_str:
+                try:
+                    etcd_timeout = int(timeout_str)
+                except ValueError:
+                    etcd_timeout = None
+
+        return cls(
+            host=host,
+            port=port,
+            prefix=etcd_prefix,
+            watch=etcd_watch,
+            timeout=etcd_timeout,
+            model=model,
+            ca_cert=ca_cert,
+            cert_key=cert_key,
+            cert_cert=cert_cert,
+            user=user,
+            password=password,
+        )
+
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"<Etcd(host={self._host!r}, port={self._port}, prefix={self._prefix!r}, watch={self._watch})>"
+        tls_info = ""
+        if self._ca_cert:
+            tls_info = ", tls=True"
+        auth_info = ""
+        if self._user:
+            auth_info = f", user={self._user!r}"
+        return f"<Etcd(host={self._host!r}, port={self._port}, prefix={self._prefix!r}, watch={self._watch}{tls_info}{auth_info})>"

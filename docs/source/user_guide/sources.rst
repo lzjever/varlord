@@ -79,7 +79,16 @@ Loads from `.env` files, filtered by model fields (requires ``varlord[dotenv]``)
 Etcd
 ----
 
-Loads from etcd with optional watch support, filtered by model fields (requires ``varlord[etcd]``):
+Loads from etcd with optional watch support, filtered by model fields (requires ``varlord[etcd]``).
+
+**Features:**
+- TLS/SSL certificate support
+- User authentication
+- Dynamic updates via watch
+- Configuration from environment variables
+- Automatic JSON parsing
+
+**Basic Usage:**
 
 .. code-block:: python
 
@@ -106,6 +115,34 @@ Loads from etcd with optional watch support, filtered by model fields (requires 
        model=AppConfig,  # Only needed if using source outside Config
    )
    # Only loads keys that match model fields
+
+**With TLS:**
+
+.. code-block:: python
+
+   source = sources.Etcd(
+       host="192.168.0.220",
+       port=2379,
+       prefix="/app/",
+       ca_cert="./cert/ca.cert.pem",
+       cert_key="./cert/key.pem",
+       cert_cert="./cert/cert.pem",
+   )
+
+**From Environment Variables (Recommended):**
+
+.. code-block:: python
+
+   # Set environment variables:
+   # export ETCD_HOST=192.168.0.220
+   # export ETCD_PORT=2379
+   # export ETCD_CA_CERT=./cert/ca.cert.pem
+   # export ETCD_CERT_KEY=./cert/key.pem
+   # export ETCD_CERT_CERT=./cert/cert.pem
+
+   source = sources.Etcd.from_env(prefix="/app/")
+
+See :doc:`etcd` for complete documentation.
 
 Custom Sources
 --------------

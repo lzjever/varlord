@@ -767,8 +767,12 @@ class Config:
             # Include defaults (always first)
             defaults_source = all_sources[0] if all_sources else None
             if defaults_source:
-                lines.append(f"  1. {defaults_source.name} (lowest priority) - {str(defaults_source)}")
+                lines.append(
+                    f"  1. {defaults_source.name} (lowest priority) - {str(defaults_source)}"
+                )
             for i, source in enumerate(all_sources[1:], start=2):
+                if source is None:
+                    continue  # Skip None sources
                 lines.append(f"  {i}. {source.name} - {str(source)}")
             lines.append("")
             return "\n".join(lines)
@@ -802,6 +806,8 @@ class Config:
 
         # Add user sources
         for i, source in enumerate(all_sources[1:], start=2):
+            if source is None:
+                continue  # Skip None sources
             load_time = self._measure_source_load_time(source)
             watch_support = "Yes" if source.supports_watch() else "No"
             last_update = "N/A"  # TODO: Track last update time if needed

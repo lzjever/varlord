@@ -178,6 +178,7 @@ If you have etcd installed, you can enable automatic watching:
        print(f"  Changes: {diff.modified}")
 
    # Configure etcd source with watch enabled
+   # Option 1: Direct configuration
    cfg = Config(
        model=AppConfig,
        sources=[
@@ -186,15 +187,27 @@ If you have etcd installed, you can enable automatic watching:
                port=2379,
                prefix="/app/",
                watch=True,  # Enable automatic watching
+               ca_cert="./cert/ca.cert.pem",  # TLS certificates (if needed)
+               cert_key="./cert/key.pem",
+               cert_cert="./cert/cert.pem",
            ),  # Defaults applied automatically
        ],
    )
 
-   store = cfg.load_store()
+   # Option 2: From environment variables (recommended)
+   # Set ETCD_HOST, ETCD_PORT, ETCD_CA_CERT, etc. in environment
+   # cfg = Config(
+   #     model=AppConfig,
+   #     sources=[
+   #         sources.Etcd.from_env(prefix="/app/", watch=True),
+   #     ],
+   # )
+
+   store = cfg.load_store()  # Automatically enables watch
    store.subscribe(on_config_change)
 
    print("Watching etcd for changes...")
-   print("Update /app/port or /app/timeout in etcd to see changes")
+   print("Update /app/host, /app/port, or /app/timeout in etcd to see changes")
    # In production, your application would continue running here
 
 **Note**: This requires etcd to be running and the ``etcd3`` package installed.
@@ -203,9 +216,118 @@ Changes in etcd will automatically trigger configuration reloads and callbacks.
 **Key Points**:
 
 - ``watch=True`` enables automatic watching
+- ``load_store()`` automatically detects and enables watch
 - Changes in etcd automatically update configuration
 - Subscribers are notified of changes
 - Watch is only enabled if the source supports it (via ``supports_watch()``)
+
+**Example: Watching Multiple Changes:**
+
+.. code-block:: python
+   :linenos:
+
+   from dataclasses import dataclass, field
+   from varlord import Config, sources
+
+   @dataclass(frozen=True)
+   class AppConfig:
+       host: str = field()
+       port: int = field(default=8000)
+       debug: bool = field(default=False)
+
+   callbacks_received = []
+
+   def on_config_change(new_config, diff):
+       callbacks_received.append((new_config, diff))
+       print(f"Change #{len(callbacks_received)}:")
+       print(f"  Modified: {diff.modified}")
+       print(f"  Config: {new_config.host}:{new_config.port}")
+
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Etcd.from_env(prefix="/app/", watch=True),
+       ],
+   )
+
+   store = cfg.load_store()
+   store.subscribe(on_config_change)
+
+   # In etcd, make multiple changes:
+   # 1. /app/host = "example.com"  -> triggers callback #1
+   # 2. /app/port = "9000"         -> triggers callback #2
+   # 3. /app/host = "updated.com"  -> triggers callback #3
+
+   # All changes will trigger callbacks automatically
+
+**Example: Handling Added, Modified, and Deleted Keys:**
+
+.. code-block:: python
+   :linenos:
+
+   @dataclass(frozen=True)
+   class AppConfig:
+       host: str = field()
+       port: int = field(default=8000)  # Default value
+
+   def on_config_change(new_config, diff):
+       if diff.added:
+           print(f"New keys added: {diff.added}")
+       if diff.modified:
+           print(f"Keys modified: {diff.modified}")
+           for key in diff.modified:
+               old_val, new_val = diff.modified[key]
+               print(f"  {key}: {old_val} -> {new_val}")
+       if diff.deleted:
+           print(f"Keys deleted: {diff.deleted}")
+           # Deleted keys fall back to default values
+
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Etcd.from_env(prefix="/app/", watch=True),
+       ],
+   )
+
+   store = cfg.load_store()
+   store.subscribe(on_config_change)
+
+   # Example scenarios:
+   # 1. Add new key: /app/port = "9000" -> diff.added contains "port"
+   # 2. Modify key: /app/port = "8000" -> diff.modified contains "port"
+   # 3. Delete key: etcdctl del /app/port -> diff.deleted contains "port"
+   #    (port falls back to default 8000)
+
+**Example: Multiple Sources with Watch:**
+
+.. code-block:: python
+   :linenos:
+
+   from varlord import Config, sources
+
+   @dataclass(frozen=True)
+   class AppConfig:
+       host: str = field()
+       port: int = field(default=8000)
+
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Etcd(host="...", prefix="/app1/", watch=True),  # First source
+           sources.Etcd(host="...", prefix="/app2/", watch=True),  # Second source (overrides first)
+           sources.Env(),  # Env overrides both etcd sources
+       ],
+   )
+
+   store = cfg.load_store()  # Watch enabled for both etcd sources
+
+   def on_change(new_config, diff):
+       print(f"Config updated: {new_config.host}:{new_config.port}")
+
+   store.subscribe(on_change)
+
+   # Changes in either etcd source will trigger callbacks
+   # Priority: /app1/ < /app2/ < Env
 
 Step 5: Thread-Safe Access
 ---------------------------

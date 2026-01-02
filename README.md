@@ -45,6 +45,39 @@ pip install varlord[dotenv,etcd]
 pip install -e ".[dev]"
 ```
 
+### Development Setup with uv (Recommended)
+
+This project uses [uv](https://github.com/astral-sh/uv) for fast dependency management. Install uv first:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then set up the development environment:
+
+**Recommended: For active development**
+
+```bash
+# Install package with all development dependencies (recommended)
+make dev-install
+
+# Or manually with uv
+uv sync --all-extras --dev
+```
+
+**Alternative: Dependencies only (for CI/CD or code review)**
+
+```bash
+# Create virtual environment and install dependencies only (without installing the package)
+# Useful for: CI/CD pipelines, code review, or when you only need development tools
+make setup-venv
+
+# Later, if you need to install the package:
+make install
+```
+
+All `make` commands will automatically use `uv` if available, otherwise fall back to `pip`.
+
 ## 🚀 Quick Start
 
 ### Basic Usage
@@ -252,7 +285,7 @@ These projects are modular components extracted from the Agentsmith platform, de
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
 

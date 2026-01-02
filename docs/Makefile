@@ -1,7 +1,8 @@
 # Minimal Sphinx Makefile
 
 SPHINXOPTS    ?=
-SPHINXBUILD  ?= sphinx-build
+# Use python -m sphinx which works with uv and other virtual environments
+SPHINXBUILD  ?= python -m sphinx
 SOURCEDIR    = source
 BUILDDIR     = build
 
@@ -12,4 +13,3 @@ help:
 
 %: Makefile
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
-

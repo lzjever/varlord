@@ -115,8 +115,8 @@ about your configuration:
 
 2. **Source Information Table**: Shows detailed diagnostics for each source:
    - Priority order (1 = lowest, higher numbers = higher priority)
-   - Source name (readable format)
-   - Source parameters (e.g., path, host, port, watch settings)
+   - Source name (from source.name property)
+   - Instance (source string representation via str(source))
    - Load time in milliseconds (for performance diagnostics)
    - Watch support status (Yes/No)
    - Last update time (N/A for now, extensible for future use)
@@ -135,13 +135,13 @@ Example diagnostic output:
 
    Configuration Source Priority and Details:
 
-   +------------+------------------------+------------------------+----------------+---------------+-------------+
-   | Priority   | Source Name            | Parameters             | Load Time (ms) | Watch Support | Last Update |
-   +------------+------------------------+------------------------+----------------+---------------+-------------+
-   | 1 (lowest) | Model Defaults         | N/A                    | 0.00           | No            | N/A         |
-   | 2          | Environment Variables  | model-based            | 0.20           | No            | N/A         |
-   | 3          | Command Line Arguments | model-based            | 0.27           | No            | N/A         |
-   +------------+------------------------+------------------------+----------------+---------------+-------------+
+   +------------+-------------+------------------------------+----------------+---------------+-------------+
+   | Priority   | Source Name | Instance                     | Load Time (ms) | Watch Support | Last Update |
+   +------------+-------------+------------------------------+----------------+---------------+-------------+
+   | 1 (lowest) | defaults    | <Defaults(model=AppConfig)>  | 0.00           | No            | N/A         |
+   | 2          | env         | <Env(model-based)>           | 0.20           | No            | N/A         |
+   | 3          | cli         | <CLI()>                      | 0.27           | No            | N/A         |
+   +------------+-------------+------------------------------+----------------+---------------+-------------+
 
    Note: Later sources override earlier ones (higher priority).
 

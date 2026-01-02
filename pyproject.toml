@@ -7,7 +7,7 @@ name = "varlord"
 dynamic = ["version"]
 description = "A powerful Python configuration management library with support for defaults, CLI args, environment variables, .env files, and optional etcd integration with dynamic updates"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 license = "Apache-2.0"
 authors = [
     {name = "Varlord Team"}
@@ -39,14 +39,12 @@ etcd = [
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
-    "sphinx>=5.0.0",
-    "sphinx-rtd-theme>=1.0.0",
     "black>=22.0.0",
     "flake8>=5.0.0",
     "mypy>=0.991",
 ]
 docs = [
-    "sphinx>=5.0.0",
+    "sphinx>=5.0.0,<9.0.0",
     "sphinx-rtd-theme>=1.0.0",
     "furo>=2024.1.0",
     "sphinx-autodoc-typehints>=1.19.0",

@@ -8,6 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.3.0] - Unreleased
 
 ### Added
+- **Etcd Source Enhancements**: 
+  - TLS/SSL certificate support for secure connections
+  - User authentication support
+  - `from_env()` method for configuration from environment variables
+  - Comprehensive watch support for dynamic configuration updates
+  - Full integration with ConfigStore and subscribe mechanism
+- **UV Dependency Management**: 
+  - Migrated from conda to uv for faster dependency management
+  - Added `setup-venv` command for CI/CD workflows (dependencies only)
+  - Automatic uv detection with fallback to pip
+- **Documentation**:
+  - Complete etcd source documentation in Sphinx
+  - Comprehensive watch and dynamic updates examples
+  - Contributing guidelines (CONTRIBUTING.md)
+  - UV setup guide (UV_SETUP.md)
+  - Quick setup guide (SETUP.md)
 - **PrettyTable Integration**: Diagnostic tables now use `prettytable` library for better formatted ASCII tables
 - **Standard CLI Options**: All varlord-based applications now support standard command-line options:
   - `--help, -h`: Show help message and exit
@@ -16,8 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Variable Status Table**: Shows all configuration variables with their status (Required/Optional, Loaded/Missing, Source, Value)
   - **Source Information Table**: Shows detailed source diagnostics including:
     - Priority order (1 = lowest, higher numbers = higher priority)
-    - Source name (readable format)
-    - Source parameters (e.g., path, host, port, watch settings)
+    - Source name (from source.name property)
+    - Instance (source string representation via str(source))
     - Load time in milliseconds (for performance diagnostics)
     - Watch support status (Yes/No)
     - Last update time (N/A for now, extensible for future use)
