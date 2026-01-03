@@ -7,7 +7,7 @@ name = "varlord"
 dynamic = ["version"]
 description = "A powerful Python configuration management library with support for defaults, CLI args, environment variables, .env files, and optional etcd integration with dynamic updates"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.8,<3.15"
 license = "Apache-2.0"
 authors = [
     {name = "Varlord Team"}
@@ -17,11 +17,13 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.7",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
