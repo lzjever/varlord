@@ -4,6 +4,8 @@
 [![Python 3.7+](https://img.shields.io/badge/python-3.7+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green.svg)](LICENSE)
 [![Documentation](https://readthedocs.org/projects/varlord/badge/?version=latest)](https://varlord.readthedocs.io)
+[![CI](https://github.com/lzjever/varlord/workflows/CI/badge.svg)](https://github.com/lzjever/varlord/actions)
+[![codecov](https://codecov.io/gh/lzjever/varlord/branch/main/graph/badge.svg)](https://codecov.io/gh/lzjever/varlord)
 
 **Varlord** is a powerful Python configuration management library that provides a unified interface for loading configuration from multiple sources with customizable priority ordering and optional dynamic updates via etcd.
 
