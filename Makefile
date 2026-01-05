@@ -29,8 +29,8 @@ help:
 	@echo "  test-dotenv       - Run dotenv integration tests (requires python-dotenv)"
 	@echo ""
 	@echo "Code Quality:"
-	@echo "  lint          - Run linting checks (flake8)"
-	@echo "  format        - Format code with black"
+	@echo "  lint          - Run linting checks (ruff)"
+	@echo "  format        - Format code with ruff"
 	@echo "  format-check  - Check code formatting"
 	@echo "  check         - Run all checks (lint + format check + tests)"
 	@echo ""
@@ -119,13 +119,13 @@ test-dotenv:
 	$(PYTHON_CMD) -m pytest tests/ -v -m "integration and requires_dotenv"
 
 lint:
-	$(PYTHON_CMD) -m flake8 varlord/ tests/ examples/ --max-line-length=100 --extend-ignore=E203,W503,E501
+	$(PYTHON_CMD) -m ruff check varlord/ tests/ examples/ --output-format=concise
 
 format:
-	$(PYTHON_CMD) -m black varlord/ tests/ examples/
+	$(PYTHON_CMD) -m ruff format varlord/ tests/ examples/
 
 format-check:
-	$(PYTHON_CMD) -m black --check varlord/ tests/ examples/
+	$(PYTHON_CMD) -m ruff format --check varlord/ tests/ examples/
 
 check: lint format-check test
 	@echo "All checks passed!"
