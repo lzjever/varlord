@@ -1,15 +1,16 @@
 """
 Etcd source.
 
-Loads configuration from etcd with optional watch support for dynamic updates.
-This is an optional source that requires the 'etcd' extra.
+Loads configuration from ``etcd`` with optional watch support for dynamic updates.
+This is an optional source that requires the ``etcd`` extra.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Optional, Iterator, Type
+
 import os
 import threading
 import warnings
+from typing import Any, Iterator, Mapping, Optional, Type
 
 try:
     # Suppress etcd3 deprecation warnings from protobuf
@@ -23,13 +24,13 @@ try:
 except ImportError:
     etcd3 = None  # type: ignore
 
-from varlord.sources.base import Source, ChangeEvent, normalize_key
+from varlord.sources.base import ChangeEvent, Source, normalize_key
 
 
 class Etcd(Source):
-    """Source that loads configuration from etcd.
+    """Source that loads configuration from ``etcd``.
 
-    Requires the 'etcd' extra: pip install varlord[etcd]
+    Requires the ``etcd`` extra: pip install varlord[etcd]
 
     Supports:
     - Loading configuration from a prefix
@@ -85,7 +86,7 @@ class Etcd(Source):
             prefix: Key prefix to load (e.g., "/app/")
             watch: Whether to enable watch support
             timeout: Connection timeout in seconds
-            model: Model to filter etcd keys.
+            model: Model to filter ``etcd`` keys.
                   Only keys that map to model fields will be loaded.
                   Model is required and will be auto-injected by Config.
             ca_cert: Path to CA certificate file for TLS
@@ -100,7 +101,7 @@ class Etcd(Source):
         super().__init__(model=model)
         if etcd3 is None:
             raise ImportError(
-                "etcd3 is required for Etcd source. " "Install it with: pip install varlord[etcd]"
+                "etcd3 is required for Etcd source. Install it with: pip install varlord[etcd]"
             )
         self._host = host
         self._port = port
@@ -118,7 +119,7 @@ class Etcd(Source):
         self._lock = threading.Lock()
 
     def _get_client(self):
-        """Get or create etcd client."""
+        """Get or create ``etcd`` client."""
         if self._client is None:
             with self._lock:
                 if self._client is None:
@@ -149,7 +150,7 @@ class Etcd(Source):
         return "etcd"
 
     def load(self) -> Mapping[str, Any]:
-        """Load configuration from etcd, filtered by model fields.
+        """Load configuration from ``etcd``, filtered by model fields.
 
         Returns:
             A mapping of configuration keys to values.
@@ -216,7 +217,7 @@ class Etcd(Source):
             return {}
 
     def supports_watch(self) -> bool:
-        """Check if etcd source supports watching.
+        """Check if ``etcd`` source supports watching.
 
         Returns:
             True if watch is enabled.
@@ -224,7 +225,7 @@ class Etcd(Source):
         return self._watch
 
     def watch(self) -> Iterator[ChangeEvent]:
-        """Watch for configuration changes in etcd.
+        """Watch for configuration changes in ``etcd``.
 
         Yields:
             ChangeEvent objects representing configuration changes.
@@ -350,10 +351,15 @@ class Etcd(Source):
         timeout: Optional[int] = None,
         model: Optional[Type[Any]] = None,
         env_prefix: str = "ETCD_",
-    ) -> "Etcd":
-        """Create Etcd source from environment variables.
+    ) -> Etcd:
+        """Create ``Etcd`` source from environment variables.
 
-        Reads etcd connection configuration from environment variables:
+        Reads connection configuration from environment variables.
+
+        Note: This method creates an ``Etcd`` source configured from environment
+        variables. The service must be accessible for this source to work.
+
+        The following environment variables are read:
         - ETCD_HOST (default: "127.0.0.1")
         - ETCD_PORT (default: 2379)
         - ETCD_PREFIX (default: "/")
@@ -369,11 +375,11 @@ class Etcd(Source):
             prefix: Key prefix to load (overrides ETCD_PREFIX if provided)
             watch: Whether to enable watch support (overrides ETCD_WATCH if provided)
             timeout: Connection timeout in seconds (overrides ETCD_TIMEOUT if provided)
-            model: Model to filter etcd keys (auto-injected by Config if not provided)
+            model: Model to filter configuration keys (auto-injected by Config if not provided)
             env_prefix: Prefix for environment variable names (default: "ETCD_")
 
         Returns:
-            Etcd source instance configured from environment variables
+            :class:`Etcd` source instance configured from environment variables
 
         Example:
             >>> # Set environment variables:

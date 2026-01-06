@@ -6,9 +6,11 @@ with actionable guidance.
 """
 
 from __future__ import annotations
-from typing import List, Type, Any
-from varlord.sources.base import Source
+
+from typing import Any, List, Type
+
 from varlord.metadata import get_field_info
+from varlord.sources.base import Source
 
 
 def generate_env_example(field_key: str, field_type: Type[Any]) -> str:
@@ -41,7 +43,7 @@ def generate_cli_example(field_key: str, field_type: Type[Any]) -> str:
     arg_name = field_key.replace(".", "-").replace("_", "-")
     example_value = _get_example_value(field_type)
 
-    if field_type == bool:
+    if field_type is bool:
         return f"--{arg_name}"
     else:
         return f"--{arg_name} {example_value!r}"
@@ -72,11 +74,11 @@ def _get_example_value(field_type: Type[Any]) -> str:
     Returns:
         Example value string
     """
-    if field_type == bool:
+    if field_type is bool:
         return "true"
-    elif field_type == int:
+    elif field_type is int:
         return "123"
-    elif field_type == float:
+    elif field_type is float:
         return "3.14"
     else:
         return "value"

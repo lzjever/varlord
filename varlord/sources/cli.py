@@ -6,12 +6,13 @@ Only parses arguments for fields defined in the model.
 """
 
 from __future__ import annotations
-import sys
-import argparse
-from typing import Mapping, Any, Optional, List, Type
 
-from varlord.sources.base import Source
+import argparse
+import sys
+from typing import Any, List, Mapping, Optional, Type
+
 from varlord.metadata import get_all_field_keys, get_all_fields_info
+from varlord.sources.base import Source
 
 
 class CLI(Source):
@@ -109,7 +110,7 @@ class CLI(Source):
             # This gives varlord complete control over help output.
 
             try:
-                if field_type == bool:
+                if field_type is bool:
                     # Boolean flags: --flag and --no-flag
                     # Don't set required=True - validation handled by Config
                     # Don't use argparse's help parameter - we generate help ourselves
@@ -280,7 +281,7 @@ class CLI(Source):
             lines.append("")
 
         # Add boolean flags note
-        bool_fields = [f for f in field_infos if f.type == bool]
+        bool_fields = [f for f in field_infos if f.type is bool]
         if bool_fields:
             lines.append("Boolean Flags:")
             for field_info in bool_fields:

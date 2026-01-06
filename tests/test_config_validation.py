@@ -2,8 +2,10 @@
 Tests for Config validation functionality.
 """
 
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord import Config, sources
 from varlord.model_validation import RequiredFieldError
 

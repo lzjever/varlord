@@ -6,15 +6,16 @@ Only loads variables that map to fields defined in the model.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Optional, Type
+
+from typing import Any, Mapping, Optional, Type
 
 try:
     from dotenv import dotenv_values
 except ImportError:
     dotenv_values = None  # type: ignore
 
-from varlord.sources.base import Source, normalize_key
 from varlord.metadata import get_all_field_keys
+from varlord.sources.base import Source, normalize_key
 
 
 class DotEnv(Source):

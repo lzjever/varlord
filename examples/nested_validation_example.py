@@ -5,8 +5,9 @@ Example demonstrating validation with nested configuration.
 import os
 import sys
 from dataclasses import dataclass
+
 from varlord import Config, sources
-from varlord.validators import validate_range, validate_regex, validate_not_empty, ValidationError
+from varlord.validators import ValidationError, validate_not_empty, validate_range, validate_regex
 
 # Set environment variables for testing
 os.environ["APP_DB__HOST"] = "localhost"

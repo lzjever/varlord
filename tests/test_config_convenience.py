@@ -4,6 +4,7 @@ Tests for Config convenience methods.
 
 import os
 from dataclasses import dataclass, field
+
 from varlord import Config, sources
 
 

@@ -2,8 +2,10 @@
 Tests for CLI source.
 """
 
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord.sources.cli import CLI
 
 

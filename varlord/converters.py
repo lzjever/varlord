@@ -6,8 +6,9 @@ appropriate Python types based on model field types.
 """
 
 from __future__ import annotations
-from typing import Any, Type, Optional, get_origin, get_args
+
 import json
+from typing import Any, Optional, Type, get_args, get_origin
 
 try:
     from varlord.logging import log_type_conversion
@@ -66,13 +67,13 @@ def convert_value(value: Any, target_type: Type[Any], key: Optional[str] = None)
         return None
 
     # Convert based on target type
-    if target_type == bool:
+    if target_type is bool:
         result = _convert_bool(value)
-    elif target_type == int:
+    elif target_type is int:
         result = _convert_int(value)
-    elif target_type == float:
+    elif target_type is float:
         result = _convert_float(value)
-    elif target_type == str:
+    elif target_type is str:
         result = str(value)
     else:
         # For other types, try JSON parsing if it's a string

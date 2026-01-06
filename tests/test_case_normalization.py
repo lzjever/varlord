@@ -2,8 +2,10 @@
 
 import os
 import sys
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord import Config, sources
 
 

@@ -6,10 +6,11 @@ dynamic updates and change subscriptions.
 """
 
 from __future__ import annotations
+
 import threading
 import time
-from typing import Any, Callable, Dict, Optional, Type, Iterator
 from dataclasses import dataclass, is_dataclass
+from typing import Any, Callable, Dict, Iterator, Optional, Type
 
 from varlord.resolver import Resolver
 from varlord.sources.base import ChangeEvent
@@ -142,6 +143,7 @@ class ConfigStore:
             Nested dictionary matching the model structure
         """
         from dataclasses import asdict, fields
+
         from varlord.converters import convert_value
 
         field_info = {f.name: f for f in fields(model)}

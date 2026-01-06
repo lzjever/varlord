@@ -4,6 +4,7 @@ Example demonstrating configuration validation.
 
 import os
 from dataclasses import dataclass
+
 from varlord import Config, sources
 from varlord.validators import validate_range, validate_regex
 

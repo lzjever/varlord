@@ -5,11 +5,12 @@ Loads configuration from environment variables, filtered by model fields.
 """
 
 from __future__ import annotations
-import os
-from typing import Mapping, Any, Optional, Type
 
-from varlord.sources.base import Source, normalize_key
+import os
+from typing import Any, Mapping, Optional, Type
+
 from varlord.metadata import get_all_field_keys
+from varlord.sources.base import Source, normalize_key
 
 
 class Env(Source):

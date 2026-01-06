@@ -7,7 +7,8 @@ Shows two ways to customize priority:
 """
 
 from dataclasses import dataclass
-from varlord import Config, sources, PriorityPolicy
+
+from varlord import Config, PriorityPolicy, sources
 
 
 @dataclass(frozen=True)

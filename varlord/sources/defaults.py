@@ -6,11 +6,12 @@ This is now an internal source used automatically by Config.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Type, Optional
-from dataclasses import is_dataclass
 
-from varlord.sources.base import Source
+from dataclasses import is_dataclass
+from typing import Any, Mapping, Optional, Type
+
 from varlord.metadata import get_all_fields_info
+from varlord.sources.base import Source
 
 
 class Defaults(Source):

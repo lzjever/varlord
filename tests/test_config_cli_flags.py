@@ -4,6 +4,7 @@ Tests for Config CLI flags handling (--help, --check-variables).
 
 import sys
 from dataclasses import dataclass, field
+
 from varlord import Config, sources
 
 

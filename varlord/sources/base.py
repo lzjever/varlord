@@ -5,8 +5,9 @@ Defines the interface that all configuration sources must implement.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, Iterator, Optional, Type
+
 from dataclasses import dataclass
+from typing import Any, Iterator, Mapping, Optional, Type
 
 
 def normalize_key(key: str) -> str:

@@ -6,6 +6,7 @@ loading configuration from defaults, environment variables, and CLI arguments.
 """
 
 from dataclasses import dataclass
+
 from varlord import Config, sources
 
 

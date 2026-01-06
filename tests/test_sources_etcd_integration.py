@@ -12,8 +12,8 @@ To skip these tests:
 """
 
 import os
-import time
 import threading
+import time
 import warnings
 from dataclasses import dataclass, field
 from typing import Optional
@@ -270,8 +270,9 @@ class TestEtcdSourceBasic:
 
     def test_etcd_source_load_json_values(self, etcd_client, etcd_cleanup):
         """Test loading JSON values (should be parsed)."""
-        from varlord.sources.etcd import Etcd
         import json
+
+        from varlord.sources.etcd import Etcd
 
         prefix = "/test/json/"
         etcd_cleanup(prefix)
@@ -393,8 +394,8 @@ class TestEtcdSourceWatch:
 
     def test_etcd_source_watch_put_event(self, etcd_client, etcd_cleanup):
         """Test watching for PUT events (add/modify)."""
-        from varlord.sources.etcd import Etcd
         from varlord.sources.base import ChangeEvent
+        from varlord.sources.etcd import Etcd
 
         prefix = "/test/watch/put/"
         etcd_cleanup(prefix)
@@ -448,8 +449,8 @@ class TestEtcdSourceWatch:
 
     def test_etcd_source_watch_delete_event(self, etcd_client, etcd_cleanup):
         """Test watching for DELETE events."""
-        from varlord.sources.etcd import Etcd
         from varlord.sources.base import ChangeEvent
+        from varlord.sources.etcd import Etcd
 
         prefix = "/test/watch/delete/"
         etcd_cleanup(prefix)
@@ -546,7 +547,7 @@ class TestEtcdSourceIntegration:
     def test_etcd_source_priority(self, etcd_client, etcd_cleanup):
         """Test etcd source priority with other sources."""
         from varlord import Config
-        from varlord.sources import Etcd, Env
+        from varlord.sources import Env, Etcd
 
         prefix = "/test/priority/"
         etcd_cleanup(prefix)

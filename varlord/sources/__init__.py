@@ -6,13 +6,15 @@ Provides various configuration sources:
 - DotEnv: From .env files
 - Env: From environment variables
 - CLI: From command-line arguments
-- Etcd: From etcd (optional, requires etcd extra)
+- Etcd: From ``etcd`` key-value store (optional, requires ``etcd`` extra)
+
+Note: The Etcd source requires the ``etcd`` extra to be installed.
 """
 
-from varlord.sources.base import Source, ChangeEvent
+from varlord.sources.base import ChangeEvent, Source
+from varlord.sources.cli import CLI
 from varlord.sources.defaults import Defaults
 from varlord.sources.env import Env
-from varlord.sources.cli import CLI
 
 __all__ = [
     "Source",

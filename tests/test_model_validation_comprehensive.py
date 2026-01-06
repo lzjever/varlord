@@ -10,9 +10,10 @@ Tests all validation scenarios including:
 - Error message correctness
 """
 
-import pytest
 from dataclasses import dataclass, field
-from typing import Optional, Union, List, Dict
+from typing import Dict, List, Optional, Union
+
+import pytest
 
 from varlord import Config, sources
 from varlord.model_validation import (

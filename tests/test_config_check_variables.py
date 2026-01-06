@@ -456,7 +456,6 @@ class TestCheckVariablesEdgeCases:
     def test_fallback_without_prettytable(self):
         """Test fallback when prettytable is not available."""
         with patch.dict("sys.modules", {"prettytable": None}):
-
             original_import = __import__
 
             def mock_import(name, *args, **kwargs):

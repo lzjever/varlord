@@ -3,6 +3,7 @@ Tests for ConfigStore compatibility with new validation system.
 """
 
 from dataclasses import dataclass, field
+
 from varlord import Config, sources
 
 

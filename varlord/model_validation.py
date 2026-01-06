@@ -9,7 +9,9 @@ For value validation (e.g., validate_port, validate_email), see varlord.validato
 """
 
 from __future__ import annotations
-from typing import Type, Any, Dict, List, get_origin, get_args, Union
+
+from typing import Any, Dict, List, Type, Union, get_args, get_origin
+
 from varlord.metadata import get_all_fields_info
 from varlord.sources.base import Source
 

@@ -4,7 +4,8 @@ Example demonstrating logging support.
 
 import logging
 from dataclasses import dataclass
-from varlord import Config, sources, set_log_level
+
+from varlord import Config, set_log_level, sources
 
 # Enable debug logging to see configuration loading details
 set_log_level(logging.DEBUG)

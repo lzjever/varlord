@@ -3,8 +3,9 @@ Tests for CLI help generation functionality.
 """
 
 from dataclasses import dataclass, field
-from varlord.sources.cli import CLI
+
 from varlord import Config, sources
+from varlord.sources.cli import CLI
 
 
 def test_cli_format_help_basic():

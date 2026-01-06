@@ -2,14 +2,16 @@
 Tests for source help formatting.
 """
 
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord import sources
 from varlord.source_help import (
-    generate_env_example,
+    format_source_help,
     generate_cli_example,
     generate_dotenv_example,
-    format_source_help,
+    generate_env_example,
 )
 
 

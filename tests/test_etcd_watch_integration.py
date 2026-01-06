@@ -14,11 +14,11 @@ To run these tests:
 """
 
 import os
-import time
 import threading
+import time
 import warnings
-from dataclasses import dataclass, field
 from collections import defaultdict
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -130,8 +130,8 @@ class TestEtcdWatchBasic:
 
     def test_watch_put_event_single_key(self, etcd_client, etcd_cleanup):
         """Test watching for a single PUT event."""
-        from varlord.sources.etcd import Etcd
         from varlord.sources.base import ChangeEvent
+        from varlord.sources.etcd import Etcd
 
         prefix = "/test/watch/put/single/"
         etcd_cleanup(prefix)
@@ -743,7 +743,7 @@ class TestMultipleSourcesWithWatch:
     def test_etcd_with_env_source(self, etcd_client, etcd_cleanup, monkeypatch):
         """Test etcd source with env source (etcd has watch, env doesn't)."""
         from varlord import Config
-        from varlord.sources import Etcd, Env
+        from varlord.sources import Env, Etcd
 
         prefix = "/test/multi/etcd-env/"
         etcd_cleanup(prefix)

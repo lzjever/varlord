@@ -87,8 +87,15 @@ varlord = ["py.typed"]
 [tool.ruff]
 line-length = 100
 target-version = "py38"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
-ignore = ["E501"]
+ignore = [
+    "E501",  # Line too long
+    "UP006",  # Keep Type from typing for Python 3.8 compatibility
+    "UP045",  # Keep Optional[X] for Python 3.8 compatibility (X | None requires 3.10+)
+    "UP007",  # Keep Union[X, Y] for Python 3.8 compatibility (X | Y requires 3.10+)
+]
 
 [tool.ruff.format]
 quote-style = "double"

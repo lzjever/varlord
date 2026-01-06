@@ -2,12 +2,14 @@
 Tests for validation module.
 """
 
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord.model_validation import (
     RequiredFieldError,
-    validate_model_definition,
     validate_config,
+    validate_model_definition,
 )
 
 

@@ -7,7 +7,6 @@ work correctly.
 
 import pytest
 
-
 # ============================================================================
 # Tutorial: Getting Started
 # ============================================================================
@@ -16,6 +15,7 @@ import pytest
 def test_getting_started_basic():
     """Test basic example from getting_started.rst."""
     from dataclasses import dataclass, field
+
     from varlord import Config
 
     @dataclass(frozen=True)  # noqa: F821
@@ -48,6 +48,7 @@ def test_getting_started_basic():
 def test_getting_started_access():
     """Test accessing configuration values."""
     from dataclasses import dataclass, field
+
     from varlord import Config
 
     @dataclass(frozen=True)  # noqa: F821
@@ -76,9 +77,9 @@ def test_getting_started_access():
 
 def test_multiple_sources_priority():
     """Test source priority from multiple_sources.rst."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -115,9 +116,9 @@ def test_multiple_sources_priority():
 
 def test_multiple_sources_cli():
     """Test CLI arguments from multiple_sources.rst."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import sys
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -153,9 +154,9 @@ def test_multiple_sources_cli():
 
 def test_multiple_sources_from_model():
     """Test Config.from_model convenience method."""
-    from dataclasses import field
     import os
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
+
     from varlord import Config
 
     @dataclass(frozen=True)  # noqa: F821
@@ -191,8 +192,8 @@ def test_multiple_sources_from_model():
 
 def test_nested_configuration_basic():
     """Test basic nested configuration."""
-    from dataclasses import field
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
+
     from varlord import Config
 
     @dataclass(frozen=True)  # noqa: F821
@@ -232,9 +233,9 @@ def test_nested_configuration_basic():
 
 def test_nested_configuration_env():
     """Test nested configuration from environment variables."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -285,9 +286,9 @@ def test_nested_configuration_env():
 
 def test_nested_configuration_cli():
     """Test nested configuration from CLI arguments."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import sys
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -331,9 +332,9 @@ def test_nested_configuration_cli():
 
 def test_nested_configuration_deep():
     """Test deeply nested configuration."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -392,10 +393,10 @@ def test_nested_configuration_deep():
 
 def test_validation_basic():
     """Test basic validation from validation.rst."""
-    from dataclasses import field
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
+
     from varlord import Config
-    from varlord.validators import validate_port, validate_not_empty
+    from varlord.validators import validate_not_empty, validate_port
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
@@ -422,11 +423,11 @@ def test_validation_basic():
 
 def test_validation_multiple_sources():
     """Test validation with multiple sources."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
-    from varlord.validators import validate_port, ValidationError
+    from varlord.validators import ValidationError, validate_port
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
@@ -455,10 +456,10 @@ def test_validation_multiple_sources():
 
 def test_validation_nested():
     """Test validation with nested configuration."""
-    from dataclasses import field
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
+
     from varlord import Config
-    from varlord.validators import validate_port, validate_not_empty
+    from varlord.validators import validate_not_empty, validate_port
 
     @dataclass(frozen=True)  # noqa: F821
     class DBConfig:
@@ -501,8 +502,9 @@ def test_validation_nested():
 def test_validation_cross_field():
     """Test cross-field validation."""
     from dataclasses import dataclass, field
+
     from varlord import Config
-    from varlord.validators import validate_port, ValidationError
+    from varlord.validators import ValidationError, validate_port
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
@@ -540,8 +542,8 @@ def test_validation_cross_field():
 
 def test_dynamic_updates_basic():
     """Test basic ConfigStore usage."""
-    from dataclasses import field
-    from dataclasses import dataclass
+    from dataclasses import dataclass, field
+
     from varlord import Config
 
     @dataclass(frozen=True)  # noqa: F821
@@ -566,9 +568,9 @@ def test_dynamic_updates_basic():
 
 def test_dynamic_updates_manual_reload():
     """Test manual reload."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -597,9 +599,9 @@ def test_dynamic_updates_manual_reload():
 
 def test_dynamic_updates_subscribe():
     """Test subscribing to configuration changes."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
+    from dataclasses import dataclass, field
+
     from varlord import Config, sources
 
     @dataclass(frozen=True)  # noqa: F821
@@ -640,10 +642,10 @@ def test_dynamic_updates_subscribe():
 
 def test_advanced_priority_policy():
     """Test PriorityPolicy from advanced_features.rst."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import os
-    from varlord import Config, sources, PriorityPolicy
+    from dataclasses import dataclass, field
+
+    from varlord import Config, PriorityPolicy, sources
 
     @dataclass(frozen=True)  # noqa: F821
     class AppConfig:
@@ -689,12 +691,12 @@ def test_advanced_priority_policy():
 
 def test_advanced_custom_source():
     """Test custom source from advanced_features.rst."""
-    from dataclasses import field
-    from dataclasses import dataclass
     import json
-    import tempfile
     import os
-    from typing import Mapping, Any
+    import tempfile
+    from dataclasses import dataclass, field
+    from typing import Any, Mapping
+
     from varlord import Config
     from varlord.sources.base import Source
 
@@ -711,7 +713,7 @@ def test_advanced_custom_source():
         def load(self) -> Mapping[str, Any]:
             """Load configuration from JSON file."""
             try:
-                with open(self._file_path, "r") as f:
+                with open(self._file_path) as f:
                     data = json.load(f)
                     return {k.lower(): v for k, v in data.items()}
             except (FileNotFoundError, json.JSONDecodeError):

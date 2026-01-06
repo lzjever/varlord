@@ -1,6 +1,7 @@
 """Tests for nested key mapping functionality."""
 
 from dataclasses import dataclass, field
+
 from varlord import Config, sources
 
 

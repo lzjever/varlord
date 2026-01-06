@@ -5,12 +5,13 @@ Provides high-level API for loading and managing configuration.
 """
 
 from __future__ import annotations
-from typing import Type, Any, List, Optional
 
-from varlord.resolver import Resolver
-from varlord.store import ConfigStore
+from typing import Any, Optional
+
 from varlord.policy import PriorityPolicy
+from varlord.resolver import Resolver
 from varlord.sources.base import Source
+from varlord.store import ConfigStore
 
 
 class Config:
@@ -39,8 +40,8 @@ class Config:
 
     def __init__(
         self,
-        model: Type[Any],
-        sources: List[Source],
+        model: type[Any],
+        sources: list[Source],
         policy: Optional[PriorityPolicy] = None,
         show_source_help: bool = True,
     ):
@@ -87,12 +88,12 @@ class Config:
     @classmethod
     def from_model(
         cls,
-        model: Type[Any],
+        model: type[Any],
         cli: bool = True,
         dotenv: Optional[str] = ".env",
         etcd: Optional[dict] = None,
         policy: Optional[PriorityPolicy] = None,
-    ) -> "Config":
+    ) -> Config:
         """Create Config with common sources (convenience method).
 
         Args:
@@ -125,7 +126,7 @@ class Config:
         """
         from varlord import sources
 
-        source_list: List[Source] = []
+        source_list: list[Source] = []
 
         # Env source (no prefix needed - filtered by model)
         source_list.append(sources.Env(model=model))
@@ -278,8 +279,8 @@ class Config:
 
             if missing_fields:
                 # Print a message before exiting
-                import sys
                 import os
+                import sys
 
                 print("")
                 print(f"⚠️  Missing required fields: {', '.join(missing_fields)}")
@@ -381,7 +382,8 @@ class Config:
         Returns:
             Nested dictionary matching the model structure
         """
-        from dataclasses import fields, is_dataclass, asdict
+        from dataclasses import asdict, fields, is_dataclass
+
         from varlord.converters import convert_value
 
         field_info = {f.name: f for f in fields(model)}
@@ -699,7 +701,7 @@ class Config:
         # Combine both tables
         return variable_table + "\n" + source_table
 
-    def _format_ascii_table(self, rows: List[dict[str, str]]) -> str:
+    def _format_ascii_table(self, rows: list[dict[str, str]]) -> str:
         """Format rows as an ASCII table using prettytable.
 
         Args:
@@ -748,7 +750,7 @@ class Config:
 
         return table.get_string() + "\n"
 
-    def _format_source_info_table(self, all_sources: List[Source]) -> str:
+    def _format_source_info_table(self, all_sources: list[Source]) -> str:
         """Format detailed source information table.
 
         Args:
@@ -897,7 +899,7 @@ class Config:
 
         return (help_shown, check_variables_shown)
 
-    def get_field_info(self) -> List[Any]:
+    def get_field_info(self) -> list[Any]:
         """Get information about all fields in the model.
 
         Returns:

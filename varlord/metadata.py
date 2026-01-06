@@ -6,8 +6,10 @@ including metadata, types, defaults, and normalized keys.
 """
 
 from __future__ import annotations
-from typing import Type, Any, List, Set, Optional
+
 from dataclasses import dataclass, fields, is_dataclass
+from typing import Any, List, Optional, Set, Type
+
 from varlord.sources.base import normalize_key
 
 
@@ -95,7 +97,7 @@ def get_all_fields_info(model: Type[Any], prefix: str = "") -> List[FieldInfo]:
         # 1. If type is Optional[T] → optional
         # 2. If has default or default_factory → optional
         # 3. Otherwise → required
-        from typing import get_origin, get_args, Union
+        from typing import Union, get_args, get_origin
 
         is_optional_type = False
         origin = get_origin(field.type)

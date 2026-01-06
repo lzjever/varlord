@@ -26,7 +26,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          uv sync --group docs
+          uv sync --group docs --all-extras
       
       - name: Run tests
         run: |
@@ -61,7 +61,7 @@ jobs:
       
       - name: Check formatting
         run: |
-          uv run black --check varlord/ tests/ examples/
+          uv run ruff format --check varlord/ tests/ examples/
 
   build:
     runs-on: ubuntu-latest

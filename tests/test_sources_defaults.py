@@ -2,8 +2,10 @@
 Tests for Defaults source.
 """
 
-import pytest
 from dataclasses import dataclass, field
+
+import pytest
+
 from varlord.sources.defaults import Defaults
 
 

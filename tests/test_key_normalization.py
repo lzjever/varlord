@@ -3,6 +3,7 @@ Tests for key normalization and field name validation.
 """
 
 from dataclasses import dataclass, field
+
 from varlord.sources.base import normalize_key
 from varlord.sources.defaults import Defaults
 

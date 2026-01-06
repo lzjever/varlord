@@ -9,7 +9,7 @@ from dataclasses import dataclass
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from varlord import Config, sources, PriorityPolicy  # noqa: E402
+from varlord import Config, PriorityPolicy, sources  # noqa: E402
 
 
 def test_full_workflow():

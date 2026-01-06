@@ -3,9 +3,10 @@ Tests for metadata module.
 """
 
 from dataclasses import dataclass, field
+
 from varlord.metadata import (
-    get_all_fields_info,
     get_all_field_keys,
+    get_all_fields_info,
     get_field_info,
 )
 

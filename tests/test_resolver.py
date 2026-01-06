@@ -2,8 +2,8 @@
 Tests for Resolver class.
 """
 
-from varlord.resolver import Resolver
 from varlord.policy import PriorityPolicy
+from varlord.resolver import Resolver
 from varlord.sources.base import Source
 
 

@@ -2,8 +2,10 @@
 Tests for type converters.
 """
 
-import pytest
 from typing import Optional, Union
+
+import pytest
+
 from varlord.converters import convert_value
 
 

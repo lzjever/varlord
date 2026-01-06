@@ -5,10 +5,11 @@ Handles merging configuration from multiple sources according to priority.
 """
 
 from __future__ import annotations
-from typing import Mapping, Any, List, Dict, Optional
 
-from varlord.sources.base import Source
+from typing import Any, Dict, List, Mapping, Optional
+
 from varlord.policy import PriorityPolicy
+from varlord.sources.base import Source
 
 
 class Resolver:
@@ -78,7 +79,7 @@ class Resolver:
         for source in source_order:
             config = source.load()
             try:
-                from varlord.logging import log_source_load, log_merge
+                from varlord.logging import log_merge, log_source_load
 
                 log_source_load(source.name, len(config))
                 # Log individual merges in debug mode

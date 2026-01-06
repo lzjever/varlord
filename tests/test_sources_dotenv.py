@@ -2,10 +2,11 @@
 Tests for DotEnv source.
 """
 
-import pytest
-import tempfile
 import os
+import tempfile
 from dataclasses import dataclass, field
+
+import pytest
 
 # Mark all tests in this file as requiring dotenv
 # Tests will be automatically deselected if python-dotenv is not installed (via conftest.py)
