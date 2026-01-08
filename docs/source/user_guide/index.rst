@@ -12,6 +12,7 @@ This guide covers all aspects of using Varlord.
    etcd
    key_mapping
    cli_commands
+   subcommands
    custom_sources
    priority
    validation

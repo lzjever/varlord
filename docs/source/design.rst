@@ -75,6 +75,8 @@ Design Principles
 1. **Simplicity First**
    - One way to do things (sources order for priority)
    - Advanced features (PriorityPolicy) only when needed
+   - Focus on core functionality: configuration loading and merging
+   - Avoid feature bloat that complicates the API
 
 2. **Type Safety**
    - Dataclass models for structure
@@ -92,6 +94,55 @@ Design Principles
 5. **Performance**
    - Lazy loading where possible
    - Efficient merging algorithms
+
+6. **Separation of Concerns**
+   - Varlord focuses on configuration management, not application routing
+   - CLI source handles flat arguments only (no subcommands)
+   - Application layer handles command routing and subcommands
+   - This keeps varlord simple and flexible
+
+Why No Built-in Subcommand Support?
+------------------------------------
+
+Varlord intentionally does not include built-in support for command-line subcommands (e.g., ``myapp console login``).
+This is a deliberate design decision based on the following principles:
+
+**1. Single Responsibility**
+   - Varlord's CLI source is designed to handle flat configuration arguments
+   - Adding subcommand support would mix configuration management with application routing
+   - Keeping these concerns separate makes both systems simpler and more maintainable
+
+**2. Flexibility**
+   - Different applications have different subcommand structures
+   - Some use simple two-level hierarchies (``command subcommand``)
+   - Others use complex nested structures (``command subcommand action``)
+   - By handling subcommands at the application layer, you have full control over the structure
+
+**3. Standard Library Integration**
+   - Python's ``argparse`` module provides excellent subcommand support
+   - There's no need to reinvent this functionality
+   - Using standard libraries makes code more familiar and maintainable
+
+**4. Configuration Model Independence**
+   - Each subcommand may need a different configuration model
+   - Application-level routing allows you to select the appropriate model for each subcommand
+   - This is more flexible than trying to support multiple models in a single CLI source
+
+**5. Keep It Simple**
+   - Adding subcommand support would significantly complicate the CLI source
+   - Most applications don't need subcommands
+   - For those that do, the application-layer approach is straightforward and well-understood
+
+**Recommended Approach**
+
+For applications that need subcommands, we recommend:
+
+1. Use ``argparse`` at the application layer to handle subcommand routing
+2. Create separate configuration models for each subcommand (if needed)
+3. Use varlord's ``Config`` class to load configuration for each subcommand
+4. This approach is simple, flexible, and follows Python best practices
+
+See :doc:`../user_guide/subcommands` for detailed guidance and examples.
 
 Configuration Flow
 ------------------

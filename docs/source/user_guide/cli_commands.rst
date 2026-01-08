@@ -239,3 +239,13 @@ Best Practices
 5. **Use ``--check-variables`` for debugging**: When troubleshooting configuration issues,
    use ``--check-variables`` to see exactly which sources are providing which values.
 
+Subcommands
+-----------
+
+Varlord's CLI source handles flat configuration arguments only. For applications that need
+command-line subcommands (e.g., ``myapp console login``), handle subcommand routing at the
+application layer using standard ``argparse``, then use varlord to load configuration for
+each subcommand.
+
+See :doc:`subcommands` for detailed guidance and examples on implementing subcommands with varlord.
+
