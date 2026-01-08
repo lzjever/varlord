@@ -18,5 +18,6 @@ This guide covers all aspects of using Varlord.
    validation
    logging
    dynamic_updates
+   best_practices
    faq
 

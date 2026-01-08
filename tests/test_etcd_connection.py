@@ -25,7 +25,8 @@ sys.path.insert(0, str(project_root))
 
 try:
     import etcd3
-except ImportError:
+except (ImportError, TypeError):
+    # TypeError can occur with protobuf version incompatibility
     etcd3 = None
     # This is a standalone script, not a pytest test file
     # It will handle the error in check_etcd_connection()

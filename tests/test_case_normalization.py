@@ -77,7 +77,6 @@ def test_dotenv_case_normalization():
     """Test that DotEnv source normalizes keys to lowercase."""
     import tempfile
 
-
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=dotenv-host\n")
         f.write("PORT=7777\n")
@@ -106,7 +105,6 @@ def test_dotenv_case_normalization():
 def test_unified_case_across_sources():
     """Test that all sources use lowercase keys for consistency."""
     import tempfile
-
 
     original_argv = sys.argv[:]
 

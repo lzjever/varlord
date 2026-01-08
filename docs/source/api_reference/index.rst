@@ -13,4 +13,5 @@ Complete API documentation for all Varlord classes and functions.
    validators
    model_validation
    logging
+   global_config
 

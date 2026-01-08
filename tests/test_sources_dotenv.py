@@ -10,7 +10,7 @@ from dataclasses import dataclass, field
 
 import pytest
 
-    from varlord.sources.dotenv import DotEnv
+from varlord.sources.dotenv import DotEnv
 
 # Mark all tests in this file as unit tests
 pytestmark = pytest.mark.unit

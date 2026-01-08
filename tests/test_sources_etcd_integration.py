@@ -29,7 +29,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3.etc
 # Tests will be automatically deselected if etcd3 is not installed (via conftest.py)
 try:
     import etcd3
-except ImportError:
+except (ImportError, TypeError):
+    # TypeError can occur with protobuf version incompatibility
     etcd3 = None
 
 pytestmark = [pytest.mark.etcd, pytest.mark.integration, pytest.mark.requires_etcd]

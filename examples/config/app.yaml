@@ -1,0 +1,10 @@
+app_name: MyApp
+database:
+  host: localhost
+  port: 5432
+  name: myapp
+  user: postgres
+api:
+  host: 0.0.0.0
+  port: 8000
+  debug: false
