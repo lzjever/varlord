@@ -24,15 +24,14 @@ Project Structure:
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 from varlord import Config, sources
 from varlord.global_config import get_global_config, set_global_config
 
-
 # ============================================================================
 # Configuration Models (config/models.py)
 # ============================================================================
+
 
 @dataclass(frozen=True)
 class DatabaseConfig:
@@ -67,6 +66,7 @@ class AppConfig:
 # ============================================================================
 # Configuration Setup (config/setup.py)
 # ============================================================================
+
 
 def setup_config() -> Config:
     """Initialize and register application configuration.
@@ -113,6 +113,7 @@ def get_config():
 # Business Code (src/services/database.py)
 # ============================================================================
 
+
 def get_db_connection():
     """Get database connection using global configuration."""
     config = get_global_config(name="app")
@@ -134,13 +135,14 @@ def get_db_connection():
 # Application Entry Point (src/main.py)
 # ============================================================================
 
+
 def main():
     """Main application entry point."""
     import sys
 
     # Step 1: Initialize configuration (once at startup)
     try:
-        cfg = setup_config()
+        setup_config()
         app_config = get_config()
     except Exception as e:
         print(f"❌ Failed to load configuration: {e}")
@@ -168,4 +170,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
