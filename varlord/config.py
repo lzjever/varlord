@@ -408,7 +408,9 @@ class Config:
                     except (ValueError, TypeError):
                         result[key] = value
 
-        # Step 3: Process nested keys
+        # Step 3: Process nested keys - COLLECT FIRST, THEN PROCESS
+        # First pass: Collect all nested keys for each parent key
+        nested_collections: dict[str, dict[str, Any]] = {}
         for key, value in flat_dict_processed.items():
             if "." in key:
                 parts = key.split(".", 1)
@@ -417,44 +419,74 @@ class Config:
 
                 if parent_key in field_info:
                     field = field_info[parent_key]
-                    if is_dataclass(field.type):
-                        # Initialize parent dict if needed
-                        if parent_key not in result:
-                            # Use value from flat_dict_processed if available
-                            if parent_key in flat_dict_processed:
-                                parent_value = flat_dict_processed[parent_key]
-                                if isinstance(parent_value, dict):
-                                    result[parent_key] = parent_value.copy()
-                                else:
-                                    result[parent_key] = {}
-                            else:
-                                result[parent_key] = {}
-                        elif not isinstance(result[parent_key], dict):
-                            result[parent_key] = {}
+                    # Handle Optional[Dataclass] types
+                    from typing import Union, get_args, get_origin
 
-                        # Recursively process nested structure
-                        # First, get existing nested values to preserve them
-                        existing_nested = {}
-                        if parent_key in result and isinstance(result[parent_key], dict):
-                            for k, v in result[parent_key].items():
-                                if is_dataclass(type(v)):
-                                    existing_nested[k] = asdict(v)
-                                elif isinstance(v, dict):
-                                    existing_nested[k] = v.copy()
-                                else:
-                                    existing_nested[k] = v
+                    field_type = field.type
+                    origin = get_origin(field_type)
+                    inner_type = field_type
 
-                        # Merge existing values with the new nested key
-                        nested_flat = {child_key: value}
-                        if existing_nested:
-                            # Merge existing nested values into nested_flat for recursive processing
-                            for k, v in existing_nested.items():
-                                if k not in nested_flat:
-                                    nested_flat[k] = v
+                    if origin is Union:
+                        args = get_args(field_type)
+                        if type(None) in args:
+                            # Get the non-None type
+                            non_none_types = [arg for arg in args if arg is not type(None)]
+                            if non_none_types:
+                                inner_type = non_none_types[0]
 
+                    if is_dataclass(inner_type):
+                        # Collect all nested keys for this parent
+                        if parent_key not in nested_collections:
+                            nested_collections[parent_key] = {}
+                        nested_collections[parent_key][child_key] = value
+
+        # Second pass: Process collected nested structures
+        for parent_key, nested_flat in nested_collections.items():
+            if parent_key in field_info:
+                field = field_info[parent_key]
+                # Handle Optional[Dataclass] types
+                from typing import Union, get_args, get_origin
+
+                field_type = field.type
+                origin = get_origin(field_type)
+                inner_type = field_type
+
+                if origin is Union:
+                    args = get_args(field_type)
+                    if type(None) in args:
+                        # Get the non-None type
+                        non_none_types = [arg for arg in args if arg is not type(None)]
+                        if non_none_types:
+                            inner_type = non_none_types[0]
+
+                if is_dataclass(inner_type):
+                    # Initialize parent dict if needed
+                    if parent_key not in result:
+                        result[parent_key] = {}
+                    elif not isinstance(result[parent_key], dict):
+                        result[parent_key] = {}
+
+                    # Recursively process the complete nested structure
+                    nested_result = self._flatten_to_nested(nested_flat, inner_type)
+
+                    # Update result[parent_key] with nested_result
+                    for nested_key, nested_value in nested_result.items():
+                        if is_dataclass(type(nested_value)):
+                            result[parent_key][nested_key] = asdict(nested_value)
+                        else:
+                            result[parent_key][nested_key] = nested_value
+                elif is_dataclass(field.type):
+                    # Non-optional dataclass (original logic)
+                    # Initialize parent dict if needed
+                    if parent_key not in result:
+                        result[parent_key] = {}
+                    elif not isinstance(result[parent_key], dict):
+                        result[parent_key] = {}
+
+                        # Recursively process the complete nested structure
                         nested_result = self._flatten_to_nested(nested_flat, field.type)
 
-                        # Update result[parent_key] with nested_result (all values are now in nested_result)
+                        # Update result[parent_key] with nested_result
                         for nested_key, nested_value in nested_result.items():
                             if is_dataclass(type(nested_value)):
                                 result[parent_key][nested_key] = asdict(nested_value)
@@ -465,7 +497,52 @@ class Config:
         for key, value in list(result.items()):
             if key in field_info:
                 field = field_info[key]
-                if is_dataclass(field.type) and isinstance(value, dict):
+                # Handle Optional[Dataclass] types
+                from typing import Union, get_args, get_origin
+
+                field_type = field.type
+                origin = get_origin(field_type)
+                inner_type = field_type
+
+                if origin is Union:
+                    args = get_args(field_type)
+                    if type(None) in args:
+                        # Get the non-None type
+                        non_none_types = [arg for arg in args if arg is not type(None)]
+                        if non_none_types:
+                            inner_type = non_none_types[0]
+
+                if is_dataclass(inner_type) and isinstance(value, dict):
+                    # First, convert any dataclass instances in value to dicts
+                    value_dict = {}
+                    for nested_key, nested_value in value.items():
+                        if is_dataclass(type(nested_value)):
+                            value_dict[nested_key] = asdict(nested_value)
+                        else:
+                            value_dict[nested_key] = nested_value
+                    # Recursively process and convert types
+                    nested_instance = self._flatten_to_nested(value_dict, inner_type)
+                    # Convert all values to correct types
+                    nested_fields = {f.name: f for f in fields(inner_type)}
+                    # Filter out init=False fields
+                    init_fields = {
+                        f.name: f for f in fields(inner_type) if getattr(f, "init", True)
+                    }
+                    filtered_instance = {
+                        k: v for k, v in nested_instance.items() if k in init_fields
+                    }
+                    for nested_key, nested_value in filtered_instance.items():
+                        if nested_key in nested_fields:
+                            nested_field = nested_fields[nested_key]
+                            try:
+                                filtered_instance[nested_key] = convert_value(
+                                    nested_value, nested_field.type, key=f"{key}.{nested_key}"
+                                )
+                            except (ValueError, TypeError):
+                                pass
+                    result[key] = inner_type(**filtered_instance)
+                elif is_dataclass(field.type) and isinstance(value, dict):
+                    # Non-optional dataclass (original logic)
                     # First, convert any dataclass instances in value to dicts
                     value_dict = {}
                     for nested_key, nested_value in value.items():
@@ -477,16 +554,23 @@ class Config:
                     nested_instance = self._flatten_to_nested(value_dict, field.type)
                     # Convert all values to correct types
                     nested_fields = {f.name: f for f in fields(field.type)}
-                    for nested_key, nested_value in nested_instance.items():
+                    # Filter out init=False fields
+                    init_fields = {
+                        f.name: f for f in fields(field.type) if getattr(f, "init", True)
+                    }
+                    filtered_instance = {
+                        k: v for k, v in nested_instance.items() if k in init_fields
+                    }
+                    for nested_key, nested_value in filtered_instance.items():
                         if nested_key in nested_fields:
                             nested_field = nested_fields[nested_key]
                             try:
-                                nested_instance[nested_key] = convert_value(
+                                filtered_instance[nested_key] = convert_value(
                                     nested_value, nested_field.type, key=f"{key}.{nested_key}"
                                 )
                             except (ValueError, TypeError):
                                 pass
-                    result[key] = field.type(**nested_instance)
+                    result[key] = field.type(**filtered_instance)
 
         return result
 

@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-01-08
+
+### Added
+- **Env Source Prefix Support**: Added `prefix` parameter to `Env` source for filtering environment variables
+  - `sources.Env(prefix="TITAN__")` - Only loads environment variables starting with the specified prefix
+  - Case-insensitive prefix matching (e.g., `titan__` matches `TITAN__`)
+  - Prefix is automatically removed before key normalization
+  - Useful for isolating application-specific environment variables in containerized deployments
+- **Enhanced Nested Dataclass Validation**: Improved validation logic for nested dataclass fields
+  - Parent dataclass fields are now considered "present" if any of their child fields exist
+  - Fixes false positive `RequiredFieldError` when nested fields are provided via dot notation
+- **Improved `_flatten_to_nested` Method**: Enhanced nested dataclass instantiation from flattened dictionaries
+  - Now correctly collects all child keys for a parent before recursively processing them
+  - Properly handles `Optional[Dataclass]` types
+  - Filters out `init=False` fields before passing arguments to dataclass constructors
+  - Fixes `TypeError` when instantiating nested dataclasses with multiple required fields
+
+### Fixed
+- Fixed `_flatten_to_nested` bug where only partial fields were passed to nested dataclass constructors
+- Fixed validation logic incorrectly flagging parent dataclass fields as missing when child fields were present
+- Fixed handling of `init=False` fields in nested dataclass instantiation
+- Fixed `Optional[Dataclass]` type handling in nested configuration loading
+
+### Changed
+- `Env` source now supports optional `prefix` parameter (backward compatible)
+- Enhanced error messages for nested configuration validation
+
 ## [0.6.0] - 2026-01-08
 
 ### Added

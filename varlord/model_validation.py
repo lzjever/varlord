@@ -59,6 +59,7 @@ class RequiredFieldError(VarlordError):
         sources: List[Source],
         show_source_help: bool = True,
         field_infos: Optional[List[Any]] = None,
+        config_dict: Optional[Dict[str, Any]] = None,
     ):
         """Initialize RequiredFieldError.
 
@@ -68,12 +69,14 @@ class RequiredFieldError(VarlordError):
             sources: List of sources (for generating help examples)
             show_source_help: Whether to include source mapping help in error message
             field_infos: Optional list of FieldInfo objects for missing fields
+            config_dict: Optional configuration dictionary for enhanced error messages
         """
         self.missing_fields = missing_fields
         self.model_name = model_name
         self.sources = sources
         self.show_source_help = show_source_help
         self.field_infos = field_infos or []
+        self._config_dict = config_dict
 
         message = self._format_error_message()
         super().__init__(message)
@@ -92,6 +95,9 @@ class RequiredFieldError(VarlordError):
             if field_info.normalized_key in self.missing_fields
         }
 
+        # Get config_dict if available (for checking child fields)
+        config_dict = getattr(self, "_config_dict", None)
+
         # List missing fields with descriptions if available
         for field_key in self.missing_fields:
             field_info = field_info_map.get(field_key)
@@ -99,6 +105,21 @@ class RequiredFieldError(VarlordError):
                 lines.append(f"  - {field_key}: {field_info.description}")
             else:
                 lines.append(f"  - {field_key}")
+
+            # Check if child fields exist for nested dataclass fields
+            if config_dict is not None and field_info:
+                from dataclasses import is_dataclass
+
+                if is_dataclass(field_info.type):
+                    prefix = field_key + "."
+                    child_fields = [k for k in config_dict.keys() if k.startswith(prefix)]
+                    if child_fields:
+                        lines.append(f"    Note: Child fields exist: {', '.join(child_fields[:5])}")
+                        if len(child_fields) > 5:
+                            lines.append(f"    ... and {len(child_fields) - 5} more")
+                        lines.append(
+                            "    This may indicate a validation logic issue with nested dataclass fields."
+                        )
 
         # Add source help if enabled
         if self.show_source_help:
@@ -205,9 +226,22 @@ def validate_config(
     for field_info in field_infos:
         if field_info.required:
             # Check if key exists in config_dict
-            if field_info.normalized_key not in config_dict:
-                missing_fields.append(field_info.normalized_key)
-                missing_field_infos.append(field_info)
+            if field_info.normalized_key in config_dict:
+                continue  # Field exists, skip
+
+            # For nested dataclass fields, check if any child field exists
+            from dataclasses import is_dataclass
+
+            if is_dataclass(field_info.type):
+                # Check if any child field exists
+                prefix = field_info.normalized_key + "."
+                has_child = any(key.startswith(prefix) for key in config_dict.keys())
+                if has_child:
+                    continue  # Parent field is satisfied by child fields
+
+            # Field is missing
+            missing_fields.append(field_info.normalized_key)
+            missing_field_infos.append(field_info)
 
     # Raise error if any required fields are missing
     if missing_fields:
@@ -217,4 +251,5 @@ def validate_config(
             sources=sources,
             show_source_help=show_source_help,
             field_infos=missing_field_infos,
+            config_dict=config_dict,
         )

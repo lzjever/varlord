@@ -25,16 +25,56 @@ Loads from environment variables, filtered by model fields:
        ],
    )
 
+   # With prefix filtering (useful for containerized deployments)
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.Env(prefix="APP__"),  # Only loads variables starting with APP__
+       ],
+   )
+
    # Advanced: Explicit model (when using source independently)
    source = sources.Env()  # Only needed if using source outside Config
    # Only loads environment variables that match model fields
    # HOST -> host, PORT -> port, etc.
    # Converts DB__HOST to db.host (nested keys)
 
+**Parameters**:
+- ``model`` (optional): Model class for filtering. Auto-injected by ``Config`` if not provided.
+- ``prefix`` (optional): Prefix for filtering environment variables. Only variables starting with this prefix are loaded.
+
+  - Case-insensitive matching (e.g., ``titan__`` matches ``TITAN__``)
+  - Prefix is automatically removed before key normalization
+  - Useful for isolating application-specific environment variables in containerized deployments
+  - Example: ``sources.Env(prefix="TITAN__")`` will only load ``TITAN__AI__COMPLETION__MODEL``, not ``AI__COMPLETION__MODEL``
+
+- ``source_id`` (optional): Custom source identifier for priority policies
+
 **Important**: 
-- The ``prefix`` parameter has been removed. All environment variables are filtered by model fields.
 - When used in ``Config``, model is automatically injected - no need to pass ``model`` parameter.
 - Only pass ``model`` explicitly if using the source independently.
+- If ``prefix`` is not provided, all environment variables matching model fields are loaded.
+- Prefix matching is case-insensitive for better compatibility.
+
+**Example with prefix**:
+
+.. code-block:: python
+
+   # Environment variables:
+   # TITAN__AI__COMPLETION__MODEL=deepseek-chat
+   # TITAN__AI__COMPLETION__API_BASE=https://api.deepseek.com
+   # AI__COMPLETION__MODEL=other-model  # This will be ignored
+
+   cfg = Config(
+       model=TitanConfig,
+       sources=[
+           sources.Env(prefix="TITAN__"),  # Only loads TITAN__ prefixed variables
+       ],
+   )
+   
+   config = cfg.load()
+   # config.ai.completion.model == "deepseek-chat"
+   # AI__COMPLETION__MODEL is ignored due to prefix filtering
 
 CLI Arguments
 -------------

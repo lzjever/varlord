@@ -32,6 +32,7 @@ class Env(Source):
     def __init__(
         self,
         model: Optional[Type[Any]] = None,
+        prefix: Optional[str] = None,
         source_id: Optional[str] = None,
     ):
         """Initialize Env source.
@@ -41,14 +42,18 @@ class Env(Source):
                   Only variables that map to model fields will be loaded.
                   If None, model will be auto-injected by Config when used in Config.
                   If provided, this model will be used (allows override).
-            source_id: Optional unique identifier (default: "env")
+            prefix: Optional prefix for environment variables (e.g., "TITAN__").
+                   If None, matches all environment variables that map to model fields.
+                   If provided, only variables starting with this prefix (uppercase) are considered.
+            source_id: Optional unique identifier (default: "env" or "env:{prefix}")
 
         Note:
-            - Prefix filtering is removed. All env vars are checked against model fields.
+            - Prefix filtering is optional. If prefix is None, all env vars are checked against model fields.
             - Recommended: Omit model parameter when used in Config (auto-injected).
             - Advanced: Provide model explicitly if using source independently.
         """
-        super().__init__(model=model, source_id=source_id or "env")
+        super().__init__(model=model, source_id=source_id or (f"env:{prefix}" if prefix else "env"))
+        self._prefix = prefix.upper() if prefix else None
 
     @property
     def name(self) -> str:
@@ -57,6 +62,8 @@ class Env(Source):
 
     def _generate_id(self) -> str:
         """Generate unique ID for Env source."""
+        if self._prefix:
+            return f"env:{self._prefix}"
         return "env"
 
     def load(self) -> Mapping[str, Any]:
@@ -86,8 +93,17 @@ class Env(Source):
 
             result: dict[str, Any] = {}
             for env_key, env_value in os.environ.items():
-                # Normalize env var name (no prefix filtering)
-                normalized_key = normalize_key(env_key)
+                # Check prefix if specified (case-insensitive)
+                if self._prefix:
+                    # Compare in uppercase for case-insensitive matching
+                    if not env_key.upper().startswith(self._prefix):
+                        continue
+                    # Remove prefix (preserve original case for normalization)
+                    key_without_prefix = env_key[len(self._prefix) :]
+                    normalized_key = normalize_key(key_without_prefix)
+                else:
+                    # Normalize env var name (no prefix filtering)
+                    normalized_key = normalize_key(env_key)
 
                 # Only load if it matches a model field
                 if normalized_key in valid_keys:
@@ -102,4 +118,6 @@ class Env(Source):
 
     def __repr__(self) -> str:
         """Return string representation."""
+        if self._prefix:
+            return f"<Env(prefix={self._prefix!r})>"
         return "<Env(model-based)>"
