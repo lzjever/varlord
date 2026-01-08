@@ -20,7 +20,9 @@ try:
         # Also suppress warnings from etcd3 submodules
         warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3")
         warnings.filterwarnings("ignore", category=DeprecationWarning, module="etcd3.*")
-except ImportError:
+except (ImportError, TypeError):
+    # TypeError can occur with protobuf version incompatibility
+    # If etcd3 is installed but incompatible, treat it as unavailable
     etcd3 = None  # type: ignore
 
 from varlord.sources.base import ChangeEvent, Source, normalize_key

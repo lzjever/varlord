@@ -61,5 +61,7 @@ try:
     from varlord.sources.etcd import Etcd  # noqa: F401
 
     __all__.append("Etcd")
-except ImportError:
+except (ImportError, TypeError):
+    # TypeError can occur if etcd3 is installed but protobuf version is incompatible
+    # In this case, treat etcd as unavailable
     pass
