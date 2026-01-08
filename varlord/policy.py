@@ -19,6 +19,7 @@ class PriorityPolicy:
     Supports:
     - Default priority for all keys
     - Per-key/namespace overrides using pattern matching
+    - Source ID (exact match) or name (match all of type)
 
     Example:
         >>> policy = PriorityPolicy(
@@ -27,16 +28,38 @@ class PriorityPolicy:
         ...         "secrets.*": ["defaults", "etcd", "env"],  # Different rules for secrets
         ...     }
         ... )
+
+        >>> # Using source ID for exact match:
+        >>> policy = PriorityPolicy(
+        ...     default=["defaults", "yaml:/etc/config.yaml", "yaml:~/.config/app.yaml", "env", "cli"],
+        ... )
+
+        >>> # Using source name to match all of type:
+        >>> policy = PriorityPolicy(
+        ...     default=["defaults", "yaml", "env", "cli"],  # All yaml sources before env
+        ... )
+
+        >>> # Mixed usage:
+        >>> policy = PriorityPolicy(
+        ...     default=["defaults", "yaml:/etc/config.yaml", "yaml", "env", "cli"],
+        ...     # First specific system config, then all other yaml sources, then env and CLI
+        ... )
     """
 
     default: List[str]
-    """Default priority order for all keys."""
+    """Default priority order for all keys.
+
+    Can contain:
+    - Source IDs (exact match, e.g., "yaml:/etc/config.yaml")
+    - Source names (match all of type, e.g., "yaml")
+    """
 
     overrides: Optional[Dict[str, List[str]]] = None
     """Per-key priority overrides.
 
     Keys are glob patterns (e.g., "secrets.*", "db.*").
     Values are priority lists for matching keys.
+    Can contain source IDs or names (same as default).
     """
 
     def get_priority(self, key: str) -> List[str]:
@@ -46,7 +69,9 @@ class PriorityPolicy:
             key: Configuration key (e.g., "db.host", "secrets.api_key")
 
         Returns:
-            List of source names in priority order (highest to lowest).
+            List of source IDs or names in priority order (highest to lowest).
+            - Source ID (e.g., "yaml:/etc/config.yaml"): Exact match
+            - Source name (e.g., "yaml"): Match all sources with this name
         """
         if self.overrides:
             for pattern, priority in self.overrides.items():

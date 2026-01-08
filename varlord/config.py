@@ -634,13 +634,35 @@ class Config:
         defaults_source = self._create_defaults_source()
         all_sources = [defaults_source] + self._sources
 
-        # Load from each source
+        # Load from each source with status tracking
         source_configs: dict[str, dict[str, Any]] = {}
+        source_statuses: dict[str, str] = {}  # source.id -> status
         for source in all_sources:
             try:
-                source_configs[source.name] = dict(source.load())
-            except Exception:
-                source_configs[source.name] = {}
+                config = source.load()
+                source_configs[source.id] = dict(config)
+                # Get status from source
+                if source.load_status == "success":
+                    source_statuses[source.id] = "Active"
+                elif source.load_status == "not_found":
+                    # 文件不存在是正常情况（如本地没有 .env 文件），使用友好的提示
+                    source_statuses[source.id] = "Not Available"
+                elif source.load_status == "failed":
+                    # 真正的错误才显示错误信息
+                    error_msg = source.load_error or "Unknown error"
+                    source_statuses[source.id] = f"Failed: {error_msg[:50]}"
+                else:
+                    source_statuses[source.id] = "Unknown"
+            except FileNotFoundError:
+                source_configs[source.id] = {}
+                source_statuses[source.id] = "Not Available"  # 文件不存在是正常情况
+            except Exception as e:
+                source_configs[source.id] = {}
+                # 捕获异常时，区分是文件不存在还是真正的错误
+                if isinstance(e, FileNotFoundError):
+                    source_statuses[source.id] = "Not Available"
+                else:
+                    source_statuses[source.id] = f"Failed: {str(e)[:50]}"  # 真正的错误
 
         # Build table rows
         rows = []
@@ -658,10 +680,10 @@ class Config:
             else:
                 status = "Loaded"
 
-            # Determine source
+            # Determine source (use source.id for lookup, but display source.name)
             source_name = "defaults"
             for source in reversed(all_sources):  # Check in reverse order (highest priority first)
-                if key in source_configs.get(source.name, {}):
+                if key in source_configs.get(source.id, {}):
                     source_name = source.name
                     break
 
@@ -695,8 +717,8 @@ class Config:
         # Generate variable diagnostic table
         variable_table = self._format_ascii_table(rows)
 
-        # Generate source information table
-        source_table = self._format_source_info_table(all_sources)
+        # Generate source information table (pass source_statuses for status display)
+        source_table = self._format_source_info_table(all_sources, source_statuses)
 
         # Combine both tables
         return variable_table + "\n" + source_table
@@ -750,11 +772,14 @@ class Config:
 
         return table.get_string() + "\n"
 
-    def _format_source_info_table(self, all_sources: list[Source]) -> str:
+    def _format_source_info_table(
+        self, all_sources: list[Source], source_statuses: dict[str, str]
+    ) -> str:
         """Format detailed source information table.
 
         Args:
             all_sources: List of all sources (including defaults)
+            source_statuses: Dictionary mapping source.id to status string
 
         Returns:
             Formatted ASCII table string with source details
@@ -769,13 +794,15 @@ class Config:
             # Include defaults (always first)
             defaults_source = all_sources[0] if all_sources else None
             if defaults_source:
+                status = source_statuses.get(defaults_source.id, "Unknown")
                 lines.append(
-                    f"  1. {defaults_source.name} (lowest priority) - {str(defaults_source)}"
+                    f"  1. {defaults_source.name} (lowest priority) - {str(defaults_source)} - Status: {status}"
                 )
             for i, source in enumerate(all_sources[1:], start=2):
                 if source is None:
                     continue  # Skip None sources
-                lines.append(f"  {i}. {source.name} - {str(source)}")
+                status = source_statuses.get(source.id, "Unknown")
+                lines.append(f"  {i}. {source.name} - {str(source)} - Status: {status}")
             lines.append("")
             return "\n".join(lines)
 
@@ -783,7 +810,9 @@ class Config:
         table.field_names = [
             "Priority",
             "Source Name",
+            "Source ID",
             "Instance",
+            "Status",
             "Load Time (ms)",
             "Watch Support",
             "Last Update",
@@ -795,11 +824,14 @@ class Config:
         defaults_source = all_sources[0] if all_sources else None
         if defaults_source:
             load_time = self._measure_source_load_time(defaults_source)
+            status = source_statuses.get(defaults_source.id, "Unknown")
             table.add_row(
                 [
                     "1 (lowest)",
                     defaults_source.name,
+                    defaults_source.id,
                     str(defaults_source),
+                    status,
                     f"{load_time:.2f}",
                     "Yes" if defaults_source.supports_watch() else "No",
                     "N/A",
@@ -813,12 +845,15 @@ class Config:
             load_time = self._measure_source_load_time(source)
             watch_support = "Yes" if source.supports_watch() else "No"
             last_update = "N/A"  # TODO: Track last update time if needed
+            status = source_statuses.get(source.id, "Unknown")
 
             table.add_row(
                 [
                     str(i),
                     source.name,
+                    source.id,
                     str(source),
+                    status,
                     f"{load_time:.2f}",
                     watch_support,
                     last_update,

@@ -38,39 +38,76 @@ pytestmark = [pytest.mark.etcd, pytest.mark.integration, pytest.mark.requires_et
 
 
 # Etcd connection configuration
-ETCD_HOST = os.environ.get("ETCD_HOST", "127.0.0.1")
-ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
-ETCD_CA_CERT = os.environ.get("ETCD_CA_CERT", "./cert/AgentsmithLocal.cert.pem")
-ETCD_CERT_KEY = os.environ.get("ETCD_CERT_KEY", "./cert/etcd-client-lzj-local/key.pem")
-ETCD_CERT_CERT = os.environ.get("ETCD_CERT_CERT", "./cert/etcd-client-lzj-local/cert.pem")
+# All values must be provided via environment variables (no defaults)
+# Required: ETCD_HOST, ETCD_PORT
+# Optional: ETCD_CA_CERT, ETCD_CERT_KEY, ETCD_CERT_CERT
+ETCD_HOST = os.environ.get("ETCD_HOST")
+ETCD_PORT = os.environ.get("ETCD_PORT")
+ETCD_CA_CERT = os.environ.get("ETCD_CA_CERT")
+ETCD_CERT_KEY = os.environ.get("ETCD_CERT_KEY")
+ETCD_CERT_CERT = os.environ.get("ETCD_CERT_CERT")
+
+
+def require_etcd_config():
+    """Check that required etcd configuration is available from environment variables."""
+    if not ETCD_HOST or not ETCD_PORT:
+        pytest.skip(
+            "ETCD_HOST and ETCD_PORT environment variables are required. "
+            "No default values are used. "
+            "Example: export ETCD_HOST=192.168.0.220 ETCD_PORT=2379"
+        )
 
 
 def get_etcd_client():
     """Get a direct etcd client for test setup/teardown."""
+    require_etcd_config()
+
     client_kwargs = {
         "host": ETCD_HOST,
-        "port": ETCD_PORT,
+        "port": int(ETCD_PORT),
     }
 
-    if os.path.exists(ETCD_CA_CERT):
+    if ETCD_CA_CERT and os.path.exists(ETCD_CA_CERT):
         client_kwargs["ca_cert"] = ETCD_CA_CERT
-    if os.path.exists(ETCD_CERT_KEY):
+    if ETCD_CERT_KEY and os.path.exists(ETCD_CERT_KEY):
         client_kwargs["cert_key"] = ETCD_CERT_KEY
-    if os.path.exists(ETCD_CERT_CERT):
+    if ETCD_CERT_CERT and os.path.exists(ETCD_CERT_CERT):
         client_kwargs["cert_cert"] = ETCD_CERT_CERT
 
     return etcd3.client(**client_kwargs)
 
 
+def get_etcd_source_kwargs():
+    """Get kwargs for creating Etcd source from environment variables."""
+    require_etcd_config()
+
+    kwargs = {
+        "host": ETCD_HOST,
+        "port": int(ETCD_PORT),
+    }
+
+    if ETCD_CA_CERT and os.path.exists(ETCD_CA_CERT):
+        kwargs["ca_cert"] = ETCD_CA_CERT
+    if ETCD_CERT_KEY and os.path.exists(ETCD_CERT_KEY):
+        kwargs["cert_key"] = ETCD_CERT_KEY
+    if ETCD_CERT_CERT and os.path.exists(ETCD_CERT_CERT):
+        kwargs["cert_cert"] = ETCD_CERT_CERT
+
+    return kwargs
+
+
 @pytest.fixture
 def etcd_client():
     """Fixture providing a direct etcd client for test setup."""
+    require_etcd_config()
+
+    # Check if certificates are provided and exist
     missing_certs = []
-    if not os.path.exists(ETCD_CA_CERT):
+    if ETCD_CA_CERT and not os.path.exists(ETCD_CA_CERT):
         missing_certs.append(f"CA cert: {ETCD_CA_CERT}")
-    if not os.path.exists(ETCD_CERT_KEY):
+    if ETCD_CERT_KEY and not os.path.exists(ETCD_CERT_KEY):
         missing_certs.append(f"Client key: {ETCD_CERT_KEY}")
-    if not os.path.exists(ETCD_CERT_CERT):
+    if ETCD_CERT_CERT and not os.path.exists(ETCD_CERT_CERT):
         missing_certs.append(f"Client cert: {ETCD_CERT_CERT}")
 
     if missing_certs:
@@ -136,16 +173,15 @@ class TestEtcdWatchBasic:
         prefix = "/test/watch/put/single/"
         etcd_cleanup(prefix)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            watch=True,
-            model=SimpleConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": prefix,
+                "watch": True,
+                "model": SimpleConfig,
+            }
         )
+        source = Etcd(**kwargs)
 
         events_received = []
         stop_event = threading.Event()
@@ -188,16 +224,15 @@ class TestEtcdWatchBasic:
         prefix = "/test/watch/put/multiple/"
         etcd_cleanup(prefix)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            watch=True,
-            model=SimpleConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": prefix,
+                "watch": True,
+                "model": SimpleConfig,
+            }
         )
+        source = Etcd(**kwargs)
 
         events_received = []
         stop_event = threading.Event()
@@ -243,16 +278,15 @@ class TestEtcdWatchBasic:
         etcd_client.put(f"{prefix}host", "example.com")
         time.sleep(0.2)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            watch=True,
-            model=SimpleConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": prefix,
+                "watch": True,
+                "model": SimpleConfig,
+            }
         )
+        source = Etcd(**kwargs)
 
         events_received = []
         stop_event = threading.Event()
@@ -304,15 +338,7 @@ class TestConfigStoreWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -341,15 +367,7 @@ class TestConfigStoreWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=False,  # Watch disabled
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": False}),
             ],
         )
 
@@ -382,15 +400,7 @@ class TestConfigStoreSubscribe:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -439,15 +449,7 @@ class TestConfigStoreSubscribe:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -500,15 +502,7 @@ class TestConfigStoreSubscribe:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -556,15 +550,7 @@ class TestConfigStoreSubscribe:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -612,15 +598,7 @@ class TestConfigStoreSubscribe:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -682,24 +660,8 @@ class TestMultipleSourcesWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix1,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix2,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix1, "watch": True}),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix2, "watch": True}),
             ],
         )
 
@@ -758,15 +720,7 @@ class TestMultipleSourcesWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
                 Env(),  # Env overrides etcd
             ],
         )
@@ -828,15 +782,7 @@ class TestLoadBehaviorWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 
@@ -871,15 +817,7 @@ class TestLoadBehaviorWithWatch:
         cfg = Config(
             model=SimpleConfig,
             sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    watch=True,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                ),
+                Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix, "watch": True}),
             ],
         )
 

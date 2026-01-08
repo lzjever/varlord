@@ -1,27 +1,36 @@
 """
 Example demonstrating validation with nested configuration.
+
+This example shows:
+- Nested dataclass structures (best practice)
+- Validation at multiple levels
+- Cross-field validation
+
+Run with:
+    python nested_validation_example.py
+    python nested_validation_example.py -cv  # Check variables
 """
 
 import os
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from varlord import Config, sources
 from varlord.validators import ValidationError, validate_not_empty, validate_range, validate_regex
 
 # Set environment variables for testing
-os.environ["APP_DB__HOST"] = "localhost"
-os.environ["APP_DB__PORT"] = "5432"
-os.environ["APP_API__TIMEOUT"] = "30"
+os.environ["DB__HOST"] = "localhost"
+os.environ["DB__PORT"] = "5432"
+os.environ["API__TIMEOUT"] = "30"
 
 
 @dataclass(frozen=True)
 class DBConfig:
     """Database configuration."""
 
-    host: str = "127.0.0.1"
-    port: int = 5432
-    max_connections: int = 10
+    host: str = field(default="127.0.0.1", metadata={"description": "Database host"})
+    port: int = field(default=5432, metadata={"description": "Database port"})
+    max_connections: int = field(default=10, metadata={"description": "Maximum connections"})
 
     def __post_init__(self):
         """Validate database configuration."""
@@ -34,9 +43,11 @@ class DBConfig:
 class APIConfig:
     """API configuration."""
 
-    timeout: int = 30
-    retries: int = 3
-    base_url: str = "https://api.example.com"
+    timeout: int = field(default=30, metadata={"description": "Request timeout in seconds"})
+    retries: int = field(default=3, metadata={"description": "Number of retries"})
+    base_url: str = field(
+        default="https://api.example.com", metadata={"description": "API base URL"}
+    )
 
     def __post_init__(self):
         """Validate API configuration."""
@@ -49,10 +60,13 @@ class APIConfig:
 class AppConfig:
     """Application configuration with nested structures."""
 
-    host: str = "0.0.0.0"
-    port: int = 8000
-    db: DBConfig = None  # type: ignore
-    api: APIConfig = None  # type: ignore
+    host: str = field(default="0.0.0.0", metadata={"description": "Server host address"})
+    port: int = field(default=8000, metadata={"description": "Server port number"})
+    # Use default_factory for nested dataclasses (best practice)
+    db: DBConfig = field(
+        default_factory=DBConfig, metadata={"description": "Database configuration"}
+    )
+    api: APIConfig = field(default_factory=APIConfig, metadata={"description": "API configuration"})
 
     def __post_init__(self):
         """Validate application configuration."""
@@ -77,24 +91,29 @@ class AppConfig:
 
 def main():
     """Main function."""
-    try:
-        cfg = Config(
-            model=AppConfig,
-            sources=[
-                sources.Env(),  # Model defaults applied automatically, model auto-injected
-            ],
-        )
+    cfg = Config(
+        model=AppConfig,
+        sources=[
+            sources.Env(),  # Model defaults applied automatically, model auto-injected
+            sources.CLI(),  # CLI arguments can override env vars
+        ],
+    )
 
+    # Handle CLI commands
+    cfg.handle_cli_commands()
+
+    try:
         app = cfg.load()
-        print("Config loaded successfully:")
-        print(f"  Host: {app.host}:{app.port}")
-        print(f"  DB: {app.db.host}:{app.db.port} (max_conn={app.db.max_connections})")
-        print(f"  API: {app.api.base_url} (timeout={app.api.timeout}s, retries={app.api.retries})")
+        print("✅ Configuration loaded and validated successfully!")
+        print(f"   Host: {app.host}:{app.port}")
+        print(f"   DB: {app.db.host}:{app.db.port} (max_conn={app.db.max_connections})")
+        print(f"   API: {app.api.base_url} (timeout={app.api.timeout}s, retries={app.api.retries})")
     except ValidationError as e:
-        print(f"Validation error: {e.key} = {e.value}: {e.message}")
+        print(f"❌ Validation error: {e.key} = {e.value}")
+        print(f"   {e.message}")
         sys.exit(1)
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error: {e}")
         sys.exit(1)
 
 

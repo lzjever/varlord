@@ -11,5 +11,6 @@ Real-world usage examples.
    validation_example
    nested_validation_example
    logging_example
+   file_sources_example
    etcd_example
 

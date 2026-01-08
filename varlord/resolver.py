@@ -39,8 +39,16 @@ class Resolver:
         self._sources = sources
         self._policy = policy
 
-        # Build source name -> source mapping (for PriorityPolicy)
-        self._source_map: Dict[str, Source] = {source.name: source for source in sources}
+        # Build source ID -> source mapping (for PriorityPolicy with exact ID matching)
+        self._source_map: Dict[str, Source] = {source.id: source for source in sources}
+
+        # Build name -> sources mapping (for PriorityPolicy with name matching)
+        self._name_to_sources: Dict[str, List[Source]] = {}
+        for source in sources:
+            name = source.name
+            if name not in self._name_to_sources:
+                self._name_to_sources[name] = []
+            self._name_to_sources[name].append(source)
 
     def _get_source_order(self, key: Optional[str] = None) -> List[Source]:
         """Get ordered list of sources for a given key.
@@ -53,8 +61,19 @@ class Resolver:
         """
         # Use policy if available (for per-key rules)
         if self._policy:
-            priority_names = self._policy.get_priority(key or "")
-            return [self._source_map[name] for name in priority_names if name in self._source_map]
+            priority_names_or_ids = self._policy.get_priority(key or "")
+            sources = []
+            for name_or_id in priority_names_or_ids:
+                if name_or_id in self._source_map:
+                    # Exact ID match
+                    sources.append(self._source_map[name_or_id])
+                elif name_or_id in self._name_to_sources:
+                    # Name match - add all sources with this name
+                    # Maintain order from sources list
+                    for source in self._sources:
+                        if source.name == name_or_id and source not in sources:
+                            sources.append(source)
+            return sources
 
         # Default: use sources in order provided
         return self._sources
@@ -98,10 +117,10 @@ class Resolver:
         Returns:
             Merged configuration dictionary.
         """
-        # First, load all sources
+        # First, load all sources (use source.id as key)
         all_configs: Dict[str, Dict[str, Any]] = {}
         for source in self._sources:
-            all_configs[source.name] = source.load()
+            all_configs[source.id] = source.load()
 
         # Collect all keys from all sources
         all_keys: set[str] = set()
@@ -111,13 +130,22 @@ class Resolver:
         # Resolve each key according to its priority
         result: Dict[str, Any] = {}
         for key in all_keys:
-            priority_names = self._policy.get_priority(key)  # type: ignore
+            priority_names_or_ids = self._policy.get_priority(key)  # type: ignore
             # Merge sources in priority order for this key
             # Later sources in the list override earlier ones
-            for source_name in priority_names:
-                if source_name in all_configs and key in all_configs[source_name]:
-                    result[key] = all_configs[source_name][key]
-                    # Don't break - continue to let later sources override
+            for name_or_id in priority_names_or_ids:
+                # Check if it's an exact ID match
+                if name_or_id in all_configs:
+                    if key in all_configs[name_or_id]:
+                        result[key] = all_configs[name_or_id][key]
+                        # Don't break - continue to let later sources override
+                # Check if it's a name match (match all sources with this name)
+                elif name_or_id in self._name_to_sources:
+                    # Check all sources with this name, in order
+                    for source in self._name_to_sources[name_or_id]:
+                        if source.id in all_configs and key in all_configs[source.id]:
+                            result[key] = all_configs[source.id][key]
+                            # Don't break - continue to let later sources override
 
         return result
 

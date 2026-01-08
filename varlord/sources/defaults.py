@@ -31,16 +31,21 @@ class Defaults(Source):
         {'host': 'localhost', 'port': 8000}
     """
 
-    def __init__(self, model: Type[Any]):
+    def __init__(
+        self,
+        model: Type[Any],
+        source_id: Optional[str] = None,
+    ):
         """Initialize Defaults source.
 
         Args:
             model: The dataclass model to extract defaults from.
+            source_id: Optional unique identifier (default: "defaults")
 
         Raises:
             TypeError: If model is not a dataclass
         """
-        super().__init__(model=model)
+        super().__init__(model=model, source_id=source_id or "defaults")
 
         if not is_dataclass(model):
             raise TypeError(f"Model must be a dataclass, got {type(model)}")
@@ -53,6 +58,10 @@ class Defaults(Source):
         """Return source name."""
         return "defaults"
 
+    def _generate_id(self) -> str:
+        """Generate unique ID for Defaults source."""
+        return "defaults"
+
     def load(self) -> Mapping[str, Any]:
         """Load default values from the model.
 
@@ -61,26 +70,36 @@ class Defaults(Source):
             Fields without defaults are excluded.
             Supports nested fields (e.g., {"db.host": "localhost"}).
         """
-        # Use precomputed defaults if available
-        if self._precomputed_defaults is not None:
-            return self._precomputed_defaults.copy()
+        # Reset status
+        self._load_status = "unknown"
+        self._load_error = None
 
-        # Extract defaults from model
-        result: dict[str, Any] = {}
-        field_infos = get_all_fields_info(self._model)
+        try:
+            # Use precomputed defaults if available
+            if self._precomputed_defaults is not None:
+                result = self._precomputed_defaults.copy()
+            else:
+                # Extract defaults from model
+                result: dict[str, Any] = {}
+                field_infos = get_all_fields_info(self._model)
 
-        for field_info in field_infos:
-            # Check for default value
-            if field_info.default is not ...:
-                result[field_info.normalized_key] = field_info.default
-            # Check for default_factory
-            elif field_info.default_factory is not ...:
-                try:
-                    result[field_info.normalized_key] = field_info.default_factory()
-                except Exception:
-                    pass  # Skip if factory fails
+                for field_info in field_infos:
+                    # Check for default value
+                    if field_info.default is not ...:
+                        result[field_info.normalized_key] = field_info.default
+                    # Check for default_factory
+                    elif field_info.default_factory is not ...:
+                        try:
+                            result[field_info.normalized_key] = field_info.default_factory()
+                        except Exception:
+                            pass  # Skip if factory fails
 
-        return result
+            self._load_status = "success"
+            return result
+        except Exception as e:
+            self._load_status = "failed"
+            self._load_error = str(e)
+            raise
 
     def __repr__(self) -> str:
         """Return string representation."""

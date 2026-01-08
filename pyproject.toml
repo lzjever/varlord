@@ -29,12 +29,13 @@ classifiers = [
 
 dependencies = [
     "prettytable>=3.0.0",
+    "python-dotenv>=0.19.0",
+    "pyyaml>=6.0",
+    "tomli>=2.0.0; python_version < '3.11'",
+    # Python 3.11+ has built-in tomllib
 ]
 
 [project.optional-dependencies]
-dotenv = [
-    "python-dotenv>=0.19.0",
-]
 etcd = [
     "etcd3>=0.1.5",
 ]

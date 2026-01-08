@@ -29,7 +29,11 @@ class Env(Source):
         {'api_key': 'value1'}  # OTHER_VAR is ignored
     """
 
-    def __init__(self, model: Optional[Type[Any]] = None):
+    def __init__(
+        self,
+        model: Optional[Type[Any]] = None,
+        source_id: Optional[str] = None,
+    ):
         """Initialize Env source.
 
         Args:
@@ -37,17 +41,22 @@ class Env(Source):
                   Only variables that map to model fields will be loaded.
                   If None, model will be auto-injected by Config when used in Config.
                   If provided, this model will be used (allows override).
+            source_id: Optional unique identifier (default: "env")
 
         Note:
             - Prefix filtering is removed. All env vars are checked against model fields.
             - Recommended: Omit model parameter when used in Config (auto-injected).
             - Advanced: Provide model explicitly if using source independently.
         """
-        super().__init__(model=model)
+        super().__init__(model=model, source_id=source_id or "env")
 
     @property
     def name(self) -> str:
         """Return source name."""
+        return "env"
+
+    def _generate_id(self) -> str:
+        """Generate unique ID for Env source."""
         return "env"
 
     def load(self) -> Mapping[str, Any]:
@@ -60,26 +69,36 @@ class Env(Source):
         Raises:
             ValueError: If model is not provided
         """
-        if not self._model:
-            raise ValueError(
-                "Env source requires model. "
-                "When used in Config, model is auto-injected. "
-                "When used independently, provide model explicitly: Env(model=AppConfig)"
-            )
+        # Reset status
+        self._load_status = "unknown"
+        self._load_error = None
 
-        # Get all valid field keys from model
-        valid_keys = get_all_field_keys(self._model)
+        try:
+            if not self._model:
+                raise ValueError(
+                    "Env source requires model. "
+                    "When used in Config, model is auto-injected. "
+                    "When used independently, provide model explicitly: Env(model=AppConfig)"
+                )
 
-        result: dict[str, Any] = {}
-        for env_key, env_value in os.environ.items():
-            # Normalize env var name (no prefix filtering)
-            normalized_key = normalize_key(env_key)
+            # Get all valid field keys from model
+            valid_keys = get_all_field_keys(self._model)
 
-            # Only load if it matches a model field
-            if normalized_key in valid_keys:
-                result[normalized_key] = env_value
+            result: dict[str, Any] = {}
+            for env_key, env_value in os.environ.items():
+                # Normalize env var name (no prefix filtering)
+                normalized_key = normalize_key(env_key)
 
-        return result
+                # Only load if it matches a model field
+                if normalized_key in valid_keys:
+                    result[normalized_key] = env_value
+
+            self._load_status = "success"
+            return result
+        except Exception as e:
+            self._load_status = "failed"
+            self._load_error = str(e)
+            raise
 
     def __repr__(self) -> str:
         """Return string representation."""

@@ -31,7 +31,7 @@ class TestEdgeCasesAndErrorPaths:
         """Test source that doesn't have name property.
 
         Note: Source base class requires name property. This will fail
-        in Resolver.__init__ when trying to access source.name.
+        during initialization when trying to generate ID.
         """
 
         class BadSource(Source):
@@ -40,17 +40,12 @@ class TestEdgeCasesAndErrorPaths:
 
             # Missing name property
 
-        cfg = Config(
-            model=SampleTestConfig,
-            sources=[BadSource()],
-        )
-
-        # Should raise NotImplementedError from base class name property
+        # Should raise NotImplementedError during initialization
         with pytest.raises(
             NotImplementedError,
             match="Subclasses must implement name property",
         ):
-            cfg.format_diagnostic_table()
+            BadSource()
 
     def test_source_name_returns_non_string(self):
         """Test source where name property returns non-string."""
@@ -265,9 +260,10 @@ class TestEdgeCasesAndErrorPaths:
         # Create sources list with None
         defaults_source = cfg._create_defaults_source()
         bad_sources = [defaults_source, None]  # None in list
+        source_statuses = {defaults_source.id: "success"}  # Provide source_statuses
 
         # Should handle None gracefully
-        output = cfg._format_source_info_table(bad_sources)
+        output = cfg._format_source_info_table(bad_sources, source_statuses)
         # Should not crash, but might have issues
         assert "Configuration" in output
 
@@ -279,7 +275,7 @@ class TestEdgeCasesAndErrorPaths:
         )
 
         # Empty sources list
-        output = cfg._format_source_info_table([])
+        output = cfg._format_source_info_table([], {})
 
         # Should handle empty list
         assert "Configuration" in output or output == ""

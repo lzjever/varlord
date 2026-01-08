@@ -10,7 +10,8 @@ from varlord.sources.base import Source
 class MockSource(Source):
     """Mock source for testing."""
 
-    def __init__(self, name: str, config: dict):
+    def __init__(self, name: str, config: dict, source_id: str = None):
+        super().__init__(source_id=source_id or name)
         self._name = name
         self._config = config
 

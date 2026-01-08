@@ -10,7 +10,7 @@ For value validation (e.g., validate_port, validate_email), see varlord.validato
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Type, Union, get_args, get_origin
+from typing import Any, Dict, List, Optional, Type, Union, get_args, get_origin
 
 from varlord.metadata import get_all_fields_info
 from varlord.sources.base import Source
@@ -58,6 +58,7 @@ class RequiredFieldError(VarlordError):
         model_name: str,
         sources: List[Source],
         show_source_help: bool = True,
+        field_infos: Optional[List[Any]] = None,
     ):
         """Initialize RequiredFieldError.
 
@@ -66,11 +67,13 @@ class RequiredFieldError(VarlordError):
             model_name: Name of the model class
             sources: List of sources (for generating help examples)
             show_source_help: Whether to include source mapping help in error message
+            field_infos: Optional list of FieldInfo objects for missing fields
         """
         self.missing_fields = missing_fields
         self.model_name = model_name
         self.sources = sources
         self.show_source_help = show_source_help
+        self.field_infos = field_infos or []
 
         message = self._format_error_message()
         super().__init__(message)
@@ -82,9 +85,20 @@ class RequiredFieldError(VarlordError):
             "",
         ]
 
-        # List missing fields
+        # Create a mapping from field key to field info for quick lookup
+        field_info_map = {
+            field_info.normalized_key: field_info
+            for field_info in self.field_infos
+            if field_info.normalized_key in self.missing_fields
+        }
+
+        # List missing fields with descriptions if available
         for field_key in self.missing_fields:
-            lines.append(f"  - {field_key}")
+            field_info = field_info_map.get(field_key)
+            if field_info and field_info.description:
+                lines.append(f"  - {field_key}: {field_info.description}")
+            else:
+                lines.append(f"  - {field_key}")
 
         # Add source help if enabled
         if self.show_source_help:
@@ -187,11 +201,13 @@ def validate_config(
 
     # Find missing required fields
     missing_fields: List[str] = []
+    missing_field_infos: List[Any] = []
     for field_info in field_infos:
         if field_info.required:
             # Check if key exists in config_dict
             if field_info.normalized_key not in config_dict:
                 missing_fields.append(field_info.normalized_key)
+                missing_field_infos.append(field_info)
 
     # Raise error if any required fields are missing
     if missing_fields:
@@ -200,4 +216,5 @@ def validate_config(
             model_name=model_name,
             sources=sources,
             show_source_help=show_source_help,
+            field_infos=missing_field_infos,
         )

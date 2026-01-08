@@ -15,7 +15,7 @@ try:
 except ImportError:
     DotEnv = None  # type: ignore
 
-pytestmark = [pytest.mark.requires_dotenv, pytest.mark.integration]
+# DotEnv is now a core dependency, no longer requires integration marker
 
 
 @dataclass

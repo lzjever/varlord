@@ -60,7 +60,7 @@ Loads from command-line arguments, filtered by model fields:
 DotEnv Files
 ------------
 
-Loads from `.env` files, filtered by model fields (requires ``varlord[dotenv]``):
+Loads from `.env` files, filtered by model fields:
 
 .. code-block:: python
 
@@ -75,6 +75,143 @@ Loads from `.env` files, filtered by model fields (requires ``varlord[dotenv]``)
    # Advanced: Explicit model (when using source independently)
    source = sources.DotEnv(".env")  # Only needed if using source outside Config
    # Only loads variables that match model fields
+
+YAML Files
+----------
+
+Loads from YAML files with automatic nested structure flattening:
+
+.. code-block:: python
+
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.YAML("config.yaml"),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model and options
+   source = sources.YAML(
+       "config.yaml",
+       model=AppConfig,  # Only needed if using source outside Config
+       required=False,   # Return empty dict if file not found (default: True)
+       encoding="utf-8", # File encoding (default: None, uses system default)
+       source_id="custom-yaml",  # Custom source ID for priority policy
+   )
+   # Nested dictionaries are automatically flattened to dot notation
+   # Example: {"db": {"host": "localhost"}} → {"db.host": "localhost"}
+
+**Example YAML file**:
+
+.. code-block:: yaml
+
+   host: 0.0.0.0
+   port: 8080
+   debug: true
+   db:
+     host: db.example.com
+     port: 3306
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested dictionaries are automatically flattened to dot notation
+- Missing files return empty dict if ``required=False``, or raise ``FileNotFoundError`` if ``required=True``
+- Missing files show "Not Available" status in ``--check-variables``
+- Supports custom source IDs for multiple YAML sources with different priorities
+
+JSON Files
+----------
+
+Loads from JSON files with automatic nested structure flattening:
+
+.. code-block:: python
+
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.JSON("config.json"),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model and options
+   source = sources.JSON(
+       "config.json",
+       model=AppConfig,  # Only needed if using source outside Config
+       required=False,   # Return empty dict if file not found (default: True)
+       encoding="utf-8", # File encoding (default: None, uses system default)
+       source_id="custom-json",  # Custom source ID for priority policy
+   )
+   # Nested objects are automatically flattened to dot notation
+   # Example: {"db": {"host": "localhost"}} → {"db.host": "localhost"}
+
+**Example JSON file**:
+
+.. code-block:: json
+
+   {
+     "host": "0.0.0.0",
+     "port": 8080,
+     "debug": true,
+     "db": {
+       "host": "db.example.com",
+       "port": 3306
+     }
+   }
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested objects are automatically flattened to dot notation
+- Missing files return empty dict if ``required=False``, or raise ``FileNotFoundError`` if ``required=True``
+- Missing files show "Not Available" status in ``--check-variables``
+- Supports custom source IDs for multiple JSON sources with different priorities
+
+TOML Files
+----------
+
+Loads from TOML files with automatic nested table flattening:
+
+.. code-block:: python
+
+   # Recommended: Model is auto-injected by Config
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.TOML("config.toml"),  # Model auto-injected, no need to pass model parameter
+       ],
+   )
+
+   # Advanced: Explicit model and options
+   source = sources.TOML(
+       "config.toml",
+       model=AppConfig,  # Only needed if using source outside Config
+       required=False,   # Return empty dict if file not found (default: True)
+       encoding="utf-8", # File encoding (default: None, uses system default)
+       source_id="custom-toml",  # Custom source ID for priority policy
+   )
+   # Nested tables are automatically flattened to dot notation
+   # Example: [db] host = "localhost" → {"db.host": "localhost"}
+
+**Example TOML file**:
+
+.. code-block:: toml
+
+   host = "0.0.0.0"
+   port = 8080
+   debug = true
+
+   [db]
+   host = "db.example.com"
+   port = 3306
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested tables are automatically flattened to dot notation
+- Missing files return empty dict if ``required=False``, or raise ``FileNotFoundError`` if ``required=True``
+- Missing files show "Not Available" status in ``--check-variables``
+- Supports custom source IDs for multiple TOML sources with different priorities
+- Requires ``tomli`` package on Python < 3.11 (Python 3.11+ has built-in ``tomllib``)
 
 Etcd
 ----

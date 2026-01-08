@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **File-Based Sources**: New YAML, JSON, and TOML sources for loading configuration from files
+  - `sources.YAML(file_path, ...)` - Load configuration from YAML files
+  - `sources.JSON(file_path, ...)` - Load configuration from JSON files
+  - `sources.TOML(file_path, ...)` - Load configuration from TOML files
+  - All file sources support nested configuration structures (automatically flattened to dot notation)
+  - All file sources support `required=False` parameter for graceful handling of missing files
+  - Missing files return empty dict and show "Not Available" status in `--check-variables`
+- **Source ID System**: Enhanced source identification for multiple sources of the same type
+  - Each source now has a unique `id` property (in addition to `name`)
+  - Custom source IDs can be specified via `source_id` parameter
+  - Automatic ID generation based on source type and key parameters
+  - `PriorityPolicy` now supports both source names and source IDs
+  - Multiple sources of the same type can be used with different priorities
+- **Enhanced Diagnostic Table**: Improved `--check-variables` output
+  - Added "Status" column showing source load status ("Active", "Not Available", "Failed: ...")
+  - Better error messages for missing files (shows "Not Available" instead of "Error")
+  - Source status tracking via `load_status` and `load_error` properties
+- **Improved Error Messages**: Required field errors now include field descriptions from metadata
+  - `RequiredFieldError` messages now show field descriptions when available
+  - More user-friendly error messages with actionable guidance
+
+### Changed
+- **Dependencies**: Moved `python-dotenv`, `pyyaml`, and `tomli` from optional to core dependencies
+  - `dotenv`, `yaml`, and `toml` sources are now always available
+  - Only `etcd` remains as an optional dependency
+- **Etcd Source**: Removed `Etcd.from_env()` method
+  - All parameters must now be passed explicitly via `__init__`
+  - Users should read environment variables themselves and pass to `Etcd()`
+  - This aligns with the principle that the library should not implicitly read environment variables for its own configuration
+- **Source Base Class**: Enhanced `Source` base class with status tracking
+  - Added `_load_status` attribute ("success", "not_found", "failed", "unknown")
+  - Added `_load_error` attribute for error messages
+  - Added `load_status` and `load_error` properties
+  - Modified `load()` to wrap `_do_load()` with proper error handling
+  - Subclasses should implement `_do_load()` instead of `load()`
+- **Key Mapping**: File-based sources (YAML, JSON, TOML) use recursive flattening
+  - Nested dictionaries are automatically flattened to dot notation (e.g., `{"db": {"host": "localhost"}}` → `{"db.host": "localhost"}`)
+  - Consistent with existing key mapping rules (`__` → `.`, `_` preserved, lowercase)
+- **Examples**: Updated all examples to use best practices
+  - Use nested dataclasses instead of double-underscore fields
+  - Include field descriptions in metadata
+  - Proper error handling with `RequiredFieldError`
+  - Support for `--help` and `-cv` flags
+
+### Fixed
+- Fixed "Unknown" status in diagnostic table for Env, CLI, Defaults, and DotEnv sources
+- Fixed source status tracking to correctly show "Active", "Not Available", or "Failed" status
+- Improved test coverage for file-based sources and multiple sources of the same type
+
 ## [0.5.0] - 2026-01-07
 
 ### Fixed

@@ -7,7 +7,6 @@ This is an optional source that requires the ``etcd`` extra.
 
 from __future__ import annotations
 
-import os
 import threading
 import warnings
 from typing import Any, Iterator, Mapping, Optional, Type
@@ -38,7 +37,6 @@ class Etcd(Source):
     - User authentication
     - Watching for changes (dynamic updates)
     - Automatic reconnection on connection loss
-    - Configuration from environment variables via from_env()
 
     Basic Example:
         >>> source = Etcd(
@@ -59,9 +57,10 @@ class Etcd(Source):
         ...     cert_cert="./cert/cert.pem",
         ... )
 
-    From Environment Variables (Recommended):
-        >>> # Set ETCD_HOST, ETCD_PORT, ETCD_CA_CERT, etc.
-        >>> source = Etcd.from_env(prefix="/app/")
+    Note:
+        ⚠️ 重要变更：不再提供 from_env() 类方法。
+        所有参数都通过 __init__ 传递，调用方负责获取初始配置信息。
+        可以使用 Env source 或其他方式获取连接参数。
     """
 
     def __init__(
@@ -77,6 +76,7 @@ class Etcd(Source):
         cert_cert: Optional[str] = None,
         user: Optional[str] = None,
         password: Optional[str] = None,
+        source_id: Optional[str] = None,
     ) -> None:
         """Initialize Etcd source.
 
@@ -94,11 +94,20 @@ class Etcd(Source):
             cert_cert: Path to client certificate file for TLS
             user: Username for authentication (optional)
             password: Password for authentication (optional)
+            source_id: Optional unique identifier (default: auto-generated)
 
         Raises:
             ImportError: If etcd3 is not installed
+
+        Note:
+            ⚠️ 重要变更：不再提供 from_env() 类方法。
+            所有参数都通过 __init__ 传递，调用方负责获取初始配置信息。
         """
-        super().__init__(model=model)
+        # Generate ID before calling super() if not provided
+        if source_id is None:
+            prefix_normalized = prefix.rstrip("/") + "/" if prefix else "/"
+            source_id = f"etcd:{host}#{port}#{prefix_normalized}"
+        super().__init__(model=model, source_id=source_id)
         if etcd3 is None:
             raise ImportError(
                 "etcd3 is required for Etcd source. Install it with: pip install varlord[etcd]"
@@ -117,6 +126,15 @@ class Etcd(Source):
         # Client will be created lazily
         self._client: Optional[Any] = None
         self._lock = threading.Lock()
+
+    def _generate_id(self) -> str:
+        """Generate unique ID for Etcd source.
+
+        ⚠️ 注意：使用 # 作为分隔符，避免 host:port 格式导致两个冒号
+        例如：etcd:127.0.0.1:2379 会变成 etcd:127.0.0.1:2379，有两个冒号
+        使用 # 分隔：etcd:127.0.0.1#2379#/app/
+        """
+        return f"etcd:{self._host}#{self._port}#{self._prefix}"
 
     def _get_client(self):
         """Get or create ``etcd`` client."""
@@ -342,107 +360,6 @@ class Etcd(Source):
             except Exception:
                 # Skip malformed events
                 continue
-
-    @classmethod
-    def from_env(
-        cls,
-        prefix: Optional[str] = None,
-        watch: Optional[bool] = None,
-        timeout: Optional[int] = None,
-        model: Optional[Type[Any]] = None,
-        env_prefix: str = "ETCD_",
-    ) -> Etcd:
-        """Create ``Etcd`` source from environment variables.
-
-        Reads connection configuration from environment variables.
-
-        Note: This method creates an ``Etcd`` source configured from environment
-        variables. The service must be accessible for this source to work.
-
-        The following environment variables are read:
-        - ETCD_HOST (default: "127.0.0.1")
-        - ETCD_PORT (default: 2379)
-        - ETCD_PREFIX (default: "/")
-        - ETCD_CA_CERT (optional: path to CA certificate)
-        - ETCD_CERT_KEY (optional: path to client key)
-        - ETCD_CERT_CERT (optional: path to client certificate)
-        - ETCD_USER (optional: username for authentication)
-        - ETCD_PASSWORD (optional: password for authentication)
-        - ETCD_WATCH (optional: "true" or "1" to enable watch)
-        - ETCD_TIMEOUT (optional: connection timeout in seconds)
-
-        Args:
-            prefix: Key prefix to load (overrides ETCD_PREFIX if provided)
-            watch: Whether to enable watch support (overrides ETCD_WATCH if provided)
-            timeout: Connection timeout in seconds (overrides ETCD_TIMEOUT if provided)
-            model: Model to filter configuration keys (auto-injected by Config if not provided)
-            env_prefix: Prefix for environment variable names (default: "ETCD_")
-
-        Returns:
-            :class:`Etcd` source instance configured from environment variables
-
-        Example:
-            >>> # Set environment variables:
-            >>> # export ETCD_HOST=192.168.0.220
-            >>> # export ETCD_PORT=2379
-            >>> # export ETCD_CA_CERT=./cert/ca.cert.pem
-            >>> # export ETCD_CERT_KEY=./cert/key.pem
-            >>> # export ETCD_CERT_CERT=./cert/cert.pem
-            >>> source = Etcd.from_env(prefix="/app/")
-        """
-        # Read configuration from environment variables
-        host = os.environ.get(f"{env_prefix}HOST", "127.0.0.1")
-        port = int(os.environ.get(f"{env_prefix}PORT", "2379"))
-
-        # Use provided prefix or read from env
-        if prefix is not None:
-            etcd_prefix = prefix
-        else:
-            etcd_prefix = os.environ.get(f"{env_prefix}PREFIX")
-            if etcd_prefix is None:
-                etcd_prefix = "/"
-
-        # TLS certificates (optional)
-        ca_cert = os.environ.get(f"{env_prefix}CA_CERT")
-        cert_key = os.environ.get(f"{env_prefix}CERT_KEY")
-        cert_cert = os.environ.get(f"{env_prefix}CERT_CERT")
-
-        # Authentication (optional)
-        user = os.environ.get(f"{env_prefix}USER")
-        password = os.environ.get(f"{env_prefix}PASSWORD")
-
-        # Watch (can be overridden by parameter)
-        # If watch parameter is explicitly provided (not None), use it
-        # Otherwise, read from environment variable
-        if watch is not None:
-            etcd_watch = watch
-        else:
-            watch_env = os.environ.get(f"{env_prefix}WATCH", "").lower()
-            etcd_watch = watch_env in ("true", "1", "yes", "on")
-
-        # Timeout (can be overridden by parameter)
-        etcd_timeout = timeout
-        if etcd_timeout is None:
-            timeout_str = os.environ.get(f"{env_prefix}TIMEOUT")
-            if timeout_str:
-                try:
-                    etcd_timeout = int(timeout_str)
-                except ValueError:
-                    etcd_timeout = None
-
-        return cls(
-            host=host,
-            port=port,
-            prefix=etcd_prefix,
-            watch=etcd_watch,
-            timeout=etcd_timeout,
-            model=model,
-            ca_cert=ca_cert,
-            cert_key=cert_key,
-            cert_cert=cert_cert,
-            user=user,
-            password=password,
-        )
 
     def __repr__(self) -> str:
         """Return string representation."""

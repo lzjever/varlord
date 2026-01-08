@@ -36,42 +36,79 @@ pytestmark = [pytest.mark.etcd, pytest.mark.integration, pytest.mark.requires_et
 
 
 # Etcd connection configuration
-# These can be overridden via environment variables
-ETCD_HOST = os.environ.get("ETCD_HOST", "127.0.0.1")
-ETCD_PORT = int(os.environ.get("ETCD_PORT", "2379"))
-ETCD_CA_CERT = os.environ.get("ETCD_CA_CERT", "./cert/AgentsmithLocal.cert.pem")
-ETCD_CERT_KEY = os.environ.get("ETCD_CERT_KEY", "./cert/etcd-client-lzj-local/key.pem")
-ETCD_CERT_CERT = os.environ.get("ETCD_CERT_CERT", "./cert/etcd-client-lzj-local/cert.pem")
+# All values must be provided via environment variables (no defaults)
+# Required: ETCD_HOST, ETCD_PORT
+# Optional: ETCD_CA_CERT, ETCD_CERT_KEY, ETCD_CERT_CERT, ETCD_PREFIX, ETCD_WATCH, ETCD_TIMEOUT
+ETCD_HOST = os.environ.get("ETCD_HOST")
+ETCD_PORT = os.environ.get("ETCD_PORT")
+ETCD_CA_CERT = os.environ.get("ETCD_CA_CERT")
+ETCD_CERT_KEY = os.environ.get("ETCD_CERT_KEY")
+ETCD_CERT_CERT = os.environ.get("ETCD_CERT_CERT")
+
+
+def require_etcd_config():
+    """Check that required etcd configuration is available from environment variables."""
+    if not ETCD_HOST or not ETCD_PORT:
+        pytest.skip(
+            "ETCD_HOST and ETCD_PORT environment variables are required. "
+            "No default values are used. "
+            "Example: export ETCD_HOST=192.168.0.220 ETCD_PORT=2379"
+        )
 
 
 def get_etcd_client():
     """Get a direct etcd client for test setup/teardown."""
+    require_etcd_config()
+
     client_kwargs = {
         "host": ETCD_HOST,
-        "port": ETCD_PORT,
+        "port": int(ETCD_PORT),
     }
 
-    # Add TLS certificates if they exist
-    if os.path.exists(ETCD_CA_CERT):
+    # Add TLS certificates if provided
+    if ETCD_CA_CERT and os.path.exists(ETCD_CA_CERT):
         client_kwargs["ca_cert"] = ETCD_CA_CERT
-    if os.path.exists(ETCD_CERT_KEY):
+    if ETCD_CERT_KEY and os.path.exists(ETCD_CERT_KEY):
         client_kwargs["cert_key"] = ETCD_CERT_KEY
-    if os.path.exists(ETCD_CERT_CERT):
+    if ETCD_CERT_CERT and os.path.exists(ETCD_CERT_CERT):
         client_kwargs["cert_cert"] = ETCD_CERT_CERT
 
     return etcd3.client(**client_kwargs)
 
 
+def get_etcd_source_kwargs():
+    """Get kwargs for creating Etcd source from environment variables."""
+    require_etcd_config()
+
+    kwargs = {
+        "host": ETCD_HOST,
+        "port": int(ETCD_PORT),
+    }
+
+    # Add TLS certificates if provided
+    if ETCD_CA_CERT and os.path.exists(ETCD_CA_CERT):
+        kwargs["ca_cert"] = ETCD_CA_CERT
+    if ETCD_CERT_KEY and os.path.exists(ETCD_CERT_KEY):
+        kwargs["cert_key"] = ETCD_CERT_KEY
+    if ETCD_CERT_CERT and os.path.exists(ETCD_CERT_CERT):
+        kwargs["cert_cert"] = ETCD_CERT_CERT
+
+    return kwargs
+
+
 @pytest.fixture
 def etcd_client():
     """Fixture providing a direct etcd client for test setup."""
-    # Check if certificates exist
+    # Check required environment variables
+    require_etcd_config()
+
+    # Check if certificates are provided and exist
     missing_certs = []
-    if not os.path.exists(ETCD_CA_CERT):
+    if ETCD_CA_CERT and not os.path.exists(ETCD_CA_CERT):
         missing_certs.append(f"CA cert: {ETCD_CA_CERT}")
-    if not os.path.exists(ETCD_CERT_KEY):
+    if ETCD_CERT_KEY and not os.path.exists(ETCD_CERT_KEY):
         missing_certs.append(f"Client key: {ETCD_CERT_KEY}")
-    if not os.path.exists(ETCD_CERT_CERT):
+    if ETCD_CERT_CERT and not os.path.exists(ETCD_CERT_CERT):
         missing_certs.append(f"Client cert: {ETCD_CERT_CERT}")
 
     if missing_certs:
@@ -140,18 +177,16 @@ class TestEtcdSourceBasic:
         """Test creating etcd source with TLS."""
         from varlord.sources.etcd import Etcd
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix="/test/",
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        require_etcd_config()
+
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = "/test/"
+
+        source = Etcd(**kwargs)
 
         assert source.name == "etcd"
         assert source._host == ETCD_HOST
-        assert source._port == ETCD_PORT
+        assert source._port == int(ETCD_PORT)
         assert source._prefix == "/test/"
 
     def test_etcd_source_load_empty(self, etcd_client, etcd_cleanup):
@@ -161,15 +196,10 @@ class TestEtcdSourceBasic:
         prefix = "/test/empty/"
         etcd_cleanup(prefix)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = SampleAppConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
         assert isinstance(result, dict)
@@ -187,15 +217,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}port", "9000")
         etcd_client.put(f"{prefix}debug", "true")
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = SampleAppConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -219,15 +244,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}db__port", "5432")
         etcd_client.put(f"{prefix}api_key", "secret123")
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=NestedTestConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = NestedTestConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -250,15 +270,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}db/host", "db.example.com")
         etcd_client.put(f"{prefix}db/port", "5432")
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=NestedTestConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = NestedTestConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -281,15 +296,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}host", "example.com")
         etcd_client.put(f"{prefix}config", json.dumps({"timeout": 30, "retries": 3}))
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = SampleAppConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -310,15 +320,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}host", "example.com")
         etcd_client.put(f"{other_prefix}host", "other.com")
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = SampleAppConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -339,15 +344,10 @@ class TestEtcdSourceBasic:
         etcd_client.put(f"{prefix}unknown_field", "value")
         etcd_client.put(f"{prefix}another_unknown", "value2")
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = prefix
+        kwargs["model"] = SampleAppConfig
+        source = Etcd(**kwargs)
 
         result = source.load()
 
@@ -364,15 +364,9 @@ class TestEtcdSourceWatch:
         """Test that watch can be enabled."""
         from varlord.sources.etcd import Etcd
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix="/test/",
-            watch=True,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update({"prefix": "/test/", "watch": True})
+        source = Etcd(**kwargs)
 
         assert source.supports_watch() is True
 
@@ -380,15 +374,9 @@ class TestEtcdSourceWatch:
         """Test that watch is disabled by default."""
         from varlord.sources.etcd import Etcd
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix="/test/",
-            watch=False,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update({"prefix": "/test/", "watch": False})
+        source = Etcd(**kwargs)
 
         assert source.supports_watch() is False
 
@@ -400,16 +388,15 @@ class TestEtcdSourceWatch:
         prefix = "/test/watch/put/"
         etcd_cleanup(prefix)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            watch=True,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": prefix,
+                "watch": True,
+                "model": SampleAppConfig,
+            }
         )
+        source = Etcd(**kwargs)
 
         events_received = []
         stop_watching = threading.Event()
@@ -459,16 +446,15 @@ class TestEtcdSourceWatch:
         etcd_client.put(f"{prefix}host", "example.com")
         time.sleep(0.2)
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix=prefix,
-            watch=True,
-            model=SampleAppConfig,
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": prefix,
+                "watch": True,
+                "model": SampleAppConfig,
+            }
         )
+        source = Etcd(**kwargs)
 
         events_received = []
         stop_watching = threading.Event()
@@ -526,16 +512,7 @@ class TestEtcdSourceIntegration:
 
         cfg = Config(
             model=SampleAppConfig,
-            sources=[
-                Etcd(
-                    host=ETCD_HOST,
-                    port=ETCD_PORT,
-                    prefix=prefix,
-                    ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                    cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                    cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                )
-            ],
+            sources=[Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix})],
         )
 
         app = cfg.load()
@@ -563,14 +540,7 @@ class TestEtcdSourceIntegration:
             cfg = Config(
                 model=SampleAppConfig,
                 sources=[
-                    Etcd(
-                        host=ETCD_HOST,
-                        port=ETCD_PORT,
-                        prefix=prefix,
-                        ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-                        cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-                        cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-                    ),
+                    Etcd(**{**get_etcd_source_kwargs(), "prefix": prefix}),
                     Env(),
                 ],
             )
@@ -611,16 +581,18 @@ class TestEtcdSourceErrorHandling:
         """Test behavior with invalid certificates."""
         from varlord.sources.etcd import Etcd
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix="/test/",
-            model=SampleAppConfig,
-            timeout=1,
-            ca_cert="/nonexistent/ca.cert.pem",
-            cert_key="/nonexistent/key.pem",
-            cert_cert="/nonexistent/cert.pem",
+        kwargs = get_etcd_source_kwargs()
+        kwargs.update(
+            {
+                "prefix": "/test/",
+                "model": SampleAppConfig,
+                "timeout": 1,
+                "ca_cert": "/nonexistent/ca.cert.pem",
+                "cert_key": "/nonexistent/key.pem",
+                "cert_cert": "/nonexistent/cert.pem",
+            }
         )
+        source = Etcd(**kwargs)
 
         # Should return empty dict on error (fail-safe)
         result = source.load()
@@ -631,22 +603,21 @@ class TestEtcdSourceErrorHandling:
         """Test that etcd source requires model."""
         from varlord.sources.etcd import Etcd
 
-        source = Etcd(
-            host=ETCD_HOST,
-            port=ETCD_PORT,
-            prefix="/test/",
-            # model not provided
-            ca_cert=ETCD_CA_CERT if os.path.exists(ETCD_CA_CERT) else None,
-            cert_key=ETCD_CERT_KEY if os.path.exists(ETCD_CERT_KEY) else None,
-            cert_cert=ETCD_CERT_CERT if os.path.exists(ETCD_CERT_CERT) else None,
-        )
+        kwargs = get_etcd_source_kwargs()
+        kwargs["prefix"] = "/test/"
+        # model not provided
+        source = Etcd(**kwargs)
 
         with pytest.raises(ValueError, match="Etcd source requires model"):
             source.load()
 
 
 class TestEtcdSourceFromEnv:
-    """Test etcd source creation from environment variables."""
+    """Test etcd source creation from environment variables.
+
+    Note: Etcd.from_env() has been removed. Tests now read from environment
+    variables and create Etcd instances directly.
+    """
 
     def test_etcd_source_from_env_basic(self, monkeypatch):
         """Test creating etcd source from environment variables."""
@@ -656,7 +627,14 @@ class TestEtcdSourceFromEnv:
         monkeypatch.setenv("ETCD_PORT", "2379")
         monkeypatch.setenv("ETCD_PREFIX", "/test/")
 
-        source = Etcd.from_env()
+        # Read from environment and create Etcd instance directly
+        import os
+
+        source = Etcd(
+            host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+            port=int(os.environ.get("ETCD_PORT", "2379")),
+            prefix=os.environ.get("ETCD_PREFIX", "/"),
+        )
 
         assert source._host == "192.168.0.220"
         assert source._port == 2379
@@ -672,7 +650,17 @@ class TestEtcdSourceFromEnv:
         monkeypatch.setenv("ETCD_CERT_KEY", "./cert/etcd-client-lzj-local/key.pem")
         monkeypatch.setenv("ETCD_CERT_CERT", "./cert/etcd-client-lzj-local/cert.pem")
 
-        source = Etcd.from_env()
+        # Read from environment and create Etcd instance directly
+        import os
+
+        source = Etcd(
+            host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+            port=int(os.environ.get("ETCD_PORT", "2379")),
+            prefix=os.environ.get("ETCD_PREFIX", "/"),
+            ca_cert=os.environ.get("ETCD_CA_CERT"),
+            cert_key=os.environ.get("ETCD_CERT_KEY"),
+            cert_cert=os.environ.get("ETCD_CERT_CERT"),
+        )
 
         assert source._host == "192.168.0.220"
         assert source._ca_cert == "./cert/AgentsmithLocal.cert.pem"
@@ -686,12 +674,23 @@ class TestEtcdSourceFromEnv:
         monkeypatch.setenv("ETCD_HOST", "127.0.0.1")
         monkeypatch.setenv("ETCD_WATCH", "true")
 
-        source = Etcd.from_env()
+        # Read from environment and create Etcd instance directly
+        import os
+
+        watch_env = os.environ.get("ETCD_WATCH", "").lower()
+        watch_value = watch_env in ("true", "1", "yes", "on")
+
+        source = Etcd(
+            host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+            port=int(os.environ.get("ETCD_PORT", "2379")),
+            prefix=os.environ.get("ETCD_PREFIX", "/"),
+            watch=watch_value,
+        )
 
         assert source._watch is True
 
     def test_etcd_source_from_env_override_params(self, monkeypatch):
-        """Test that parameters override environment variables."""
+        """Test that parameters can override environment variables."""
         from varlord.sources.etcd import Etcd
 
         monkeypatch.setenv("ETCD_HOST", "127.0.0.1")
@@ -699,7 +698,15 @@ class TestEtcdSourceFromEnv:
         monkeypatch.setenv("ETCD_PREFIX", "/env/")
         monkeypatch.setenv("ETCD_WATCH", "true")
 
-        source = Etcd.from_env(prefix="/override/", watch=False)
+        # Read from environment but override specific parameters
+        import os
+
+        source = Etcd(
+            host=os.environ.get("ETCD_HOST", "127.0.0.1"),  # From env
+            port=int(os.environ.get("ETCD_PORT", "2379")),  # From env
+            prefix="/override/",  # Overridden
+            watch=False,  # Overridden
+        )
 
         assert source._host == "127.0.0.1"  # From env
         assert source._port == 2379  # From env

@@ -201,6 +201,182 @@ DotEnv (.env Files)
 - All keys are lowercase
 - No prefix filtering - use model fields to control which variables are loaded
 
+YAML Files
+~~~~~~~~~~
+
+**Source**: ``sources.YAML``
+
+**Input**: YAML file structure (nested dictionaries)
+
+**Mapping Rules**:
+
+1. **Recursive flattening**: Nested dictionaries are automatically flattened to dot notation
+2. **Model-based filtering**: Only keys that map to fields defined in the model are loaded
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+
+**Example**:
+
+.. code-block:: python
+
+   @dataclass
+   class DBConfig:
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+
+   @dataclass
+   class AppConfig:
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=DBConfig)
+       k8s_pod_name: str = field(default="default-pod")
+   
+   # config.yaml:
+   # host: 0.0.0.0
+   # port: 8080
+   # db:
+   #   host: db.example.com
+   #   port: 3306
+   # k8s_pod_name: my-pod
+   
+   source = YAML("config.yaml", model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": 8080, "db.host": "db.example.com", "db.port": 3306, "k8s_pod_name": "my-pod"}
+
+**Mapping Details**:
+
+- Nested structure ``db.host`` → ``db.host`` (flattened automatically)
+- Top-level keys are normalized using unified rules
+- ``k8s_pod_name`` → ``k8s_pod_name`` (single ``_`` preserved)
+- Missing files return empty dict (if ``required=False``) or raise ``FileNotFoundError`` (if ``required=True``)
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested dictionaries are automatically flattened to dot notation
+- Keys are normalized using unified rules
+- ``__`` becomes ``.`` (for nesting)
+- Single ``_`` is preserved
+- All keys are lowercase
+- Supports ``required=False`` for graceful handling of missing files
+- Missing files show "Not Available" status in ``--check-variables``
+
+JSON Files
+~~~~~~~~~~~
+
+**Source**: ``sources.JSON``
+
+**Input**: JSON file structure (nested objects)
+
+**Mapping Rules**:
+
+1. **Recursive flattening**: Nested objects are automatically flattened to dot notation
+2. **Model-based filtering**: Only keys that map to fields defined in the model are loaded
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+
+**Example**:
+
+.. code-block:: python
+
+   @dataclass
+   class DBConfig:
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+
+   @dataclass
+   class AppConfig:
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=DBConfig)
+       k8s_pod_name: str = field(default="default-pod")
+   
+   # config.json:
+   # {
+   #   "host": "0.0.0.0",
+   #   "port": 8080,
+   #   "db": {
+   #     "host": "db.example.com",
+   #     "port": 3306
+   #   },
+   #   "k8s_pod_name": "my-pod"
+   # }
+   
+   source = JSON("config.json", model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": 8080, "db.host": "db.example.com", "db.port": 3306, "k8s_pod_name": "my-pod"}
+
+**Mapping Details**:
+
+- Nested structure ``db.host`` → ``db.host`` (flattened automatically)
+- Top-level keys are normalized using unified rules
+- ``k8s_pod_name`` → ``k8s_pod_name`` (single ``_`` preserved)
+- Missing files return empty dict (if ``required=False``) or raise ``FileNotFoundError`` (if ``required=True``)
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested objects are automatically flattened to dot notation
+- Keys are normalized using unified rules
+- ``__`` becomes ``.`` (for nesting)
+- Single ``_`` is preserved
+- All keys are lowercase
+- Supports ``required=False`` for graceful handling of missing files
+- Missing files show "Not Available" status in ``--check-variables``
+
+TOML Files
+~~~~~~~~~~
+
+**Source**: ``sources.TOML``
+
+**Input**: TOML file structure (nested tables)
+
+**Mapping Rules**:
+
+1. **Recursive flattening**: Nested tables are automatically flattened to dot notation
+2. **Model-based filtering**: Only keys that map to fields defined in the model are loaded
+3. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+
+**Example**:
+
+.. code-block:: python
+
+   @dataclass
+   class DBConfig:
+       host: str = field(default="localhost")
+       port: int = field(default=5432)
+
+   @dataclass
+   class AppConfig:
+       host: str = field(default="127.0.0.1")
+       port: int = field(default=8000)
+       db: DBConfig = field(default_factory=DBConfig)
+       k8s_pod_name: str = field(default="default-pod")
+   
+   # config.toml:
+   # host = "0.0.0.0"
+   # port = 8080
+   # k8s_pod_name = "my-pod"
+   #
+   # [db]
+   # host = "db.example.com"
+   # port = 3306
+   
+   source = TOML("config.toml", model=AppConfig)
+   # Returns: {"host": "0.0.0.0", "port": 8080, "db.host": "db.example.com", "db.port": 3306, "k8s_pod_name": "my-pod"}
+
+**Mapping Details**:
+
+- Nested tables ``[db]`` → ``db.host``, ``db.port`` (flattened automatically)
+- Top-level keys are normalized using unified rules
+- ``k8s_pod_name`` → ``k8s_pod_name`` (single ``_`` preserved)
+- Missing files return empty dict (if ``required=False``) or raise ``FileNotFoundError`` (if ``required=True``)
+
+**Notes**:
+- Model is required and will be auto-injected by ``Config`` if not provided
+- Nested tables are automatically flattened to dot notation
+- Keys are normalized using unified rules
+- ``__`` becomes ``.`` (for nesting)
+- Single ``_`` is preserved
+- All keys are lowercase
+- Supports ``required=False`` for graceful handling of missing files
+- Missing files show "Not Available" status in ``--check-variables``
+- Requires ``tomli`` package on Python < 3.11 (Python 3.11+ has built-in ``tomllib``)
+
 Etcd
 ~~~~
 
@@ -254,39 +430,45 @@ Etcd's hierarchical structure naturally maps to nested configuration:
 Comparison Table
 ----------------
 
-+------------------+------------------+------------------+------------------+------------------+
-| Feature          | Defaults         | Env              | CLI              | DotEnv           |
-+==================+==================+==================+==================+==================+
-| Input            | Field names      | Env var names    | CLI args         | .env file        |
-+------------------+------------------+------------------+------------------+------------------+
-| Model filter     | N/A (from model) | Yes (required)   | Yes (required)   | Yes (required)   |
-+------------------+------------------+------------------+------------------+------------------+
-| Prefix filter    | No               | No               | No               | No               |
-+------------------+------------------+------------------+------------------+------------------+
-| Normalization    | Unified rule     | Unified rule     | Unified rule     | Unified rule     |
-+------------------+------------------+------------------+------------------+------------------+
-| ``__`` handling  | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   |
-+------------------+------------------+------------------+------------------+------------------+
-| ``_`` handling   | Preserved        | Preserved        | Preserved        | Preserved        |
-+------------------+------------------+------------------+------------------+------------------+
-| CLI special      | N/A              | N/A              | ``-`` = ``_``    | N/A              |
-+------------------+------------------+------------------+------------------+------------------+
-| Nested keys      | ``parent__child``| ``PARENT__CHILD``|``--parent-child``| ``PARENT__CHILD``|
-+------------------+------------------+------------------+------------------+------------------+
-| Type conversion  | Native types     | Strings          | Based on model   | Strings          |
-+------------------+------------------+------------------+------------------+------------------+
-| Example input    | ``host``         | ``HOST``         | ``--host``       | ``HOST``         |
-+------------------+------------------+------------------+------------------+------------------+
-| Example output   | ``host``         | ``host``         | ``host``         | ``host``         |
-+------------------+------------------+------------------+------------------+------------------+
-| Nested example   | ``db__host``     | ``DB__HOST``     | ``--db-host``    | ``DB__HOST``     |
-+------------------+------------------+------------------+------------------+------------------+
-| Nested output    | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      |
-+------------------+------------------+------------------+------------------+------------------+
-| Underscore ex.   | ``k8s_pod_name`` |``K8S_POD_NAME``  |``--k8s-pod-name``|``K8S_POD_NAME``  |
-+------------------+------------------+------------------+------------------+------------------+
-| Underscore out   | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` |
-+------------------+------------------+------------------+------------------+------------------+
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Feature          | Defaults         | Env              | CLI              | DotEnv           | YAML             | JSON             | TOML             |
++==================+==================+==================+==================+==================+==================+==================+==================+
+| Input            | Field names      | Env var names    | CLI args         | .env file        | YAML file        | JSON file        | TOML file        |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Model filter     | N/A (from model) | Yes (required)   | Yes (required)   | Yes (required)   | Yes (required)   | Yes (required)   | Yes (required)   |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Prefix filter    | No               | No               | No               | No               | No               | No               | No               |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Normalization    | Unified rule     | Unified rule     | Unified rule     | Unified rule     | Unified rule     | Unified rule     | Unified rule     |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Flattening       | N/A              | N/A              | N/A              | N/A              | Recursive        | Recursive        | Recursive        |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| ``__`` handling  | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| ``_`` handling   | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| CLI special      | N/A              | N/A              | ``-`` = ``_``    | N/A              | N/A              | N/A              | N/A              |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Nested keys      | ``parent__child``| ``PARENT__CHILD``|``--parent-child``| ``PARENT__CHILD``| ``parent: child:``| ``{"parent": {}}``| ``[parent]``   |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Type conversion  | Native types     | Strings          | Based on model   | Strings          | Native types     | Native types     | Native types     |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Missing file     | N/A              | N/A              | N/A              | Empty dict       | Empty dict*      | Empty dict*      | Empty dict*      |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Example input    | ``host``         | ``HOST``         | ``--host``       | ``HOST``         | ``host: ...``     | ``"host": ...``   | ``host = ...`` |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Example output   | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Nested example   | ``db__host``     | ``DB__HOST``     | ``--db-host``    | ``DB__HOST``     | ``db: host:``    |``"db": {"host"}``| ``[db] host``    |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Nested output    | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Underscore ex.   | ``k8s_pod_name`` |``K8S_POD_NAME``  |``--k8s-pod-name``|``K8S_POD_NAME``  | ``k8s_pod_name:``|``"k8s_pod_name"``| ``k8s_pod_name`` |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+| Underscore out   | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` | ``k8s_pod_name`` |
++------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
+
+\* If ``required=False``, otherwise raises ``FileNotFoundError``
 
 +------------------+------------------+
 | Feature          | Etcd             |

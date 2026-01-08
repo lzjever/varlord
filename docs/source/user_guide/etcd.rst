@@ -53,13 +53,14 @@ Create an Etcd source directly:
 From Environment Variables (Recommended)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The recommended approach is to use ``Etcd.from_env()`` to read configuration from environment variables. This solves the "bootstrap problem" of how to configure the etcd source itself.
+The recommended approach is to read environment variables yourself and pass them to ``Etcd()``. This aligns with the principle that the library should not implicitly read environment variables for its own configuration.
 
 .. code-block:: python
 
    from varlord import Config
    from varlord.sources import Etcd
    from dataclasses import dataclass, field
+   import os
 
    @dataclass
    class AppConfig:
@@ -67,8 +68,18 @@ The recommended approach is to use ``Etcd.from_env()`` to read configuration fro
        port: int = field(default=8000)
        debug: bool = field(default=False)
 
-   # From environment variables
-   etcd_source = Etcd.from_env(prefix="/app/")
+   # Read environment variables and pass to Etcd
+   etcd_source = Etcd(
+       host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+       port=int(os.environ.get("ETCD_PORT", "2379")),
+       prefix=os.environ.get("ETCD_PREFIX", "/app/"),
+       ca_cert=os.environ.get("ETCD_CA_CERT"),
+       cert_key=os.environ.get("ETCD_CERT_KEY"),
+       cert_cert=os.environ.get("ETCD_CERT_CERT"),
+       user=os.environ.get("ETCD_USER"),
+       password=os.environ.get("ETCD_PASSWORD"),
+       watch=os.environ.get("ETCD_WATCH", "").lower() in ("true", "1", "yes", "on"),
+   )
 
    cfg = Config(
        model=AppConfig,
@@ -76,6 +87,8 @@ The recommended approach is to use ``Etcd.from_env()`` to read configuration fro
    )
 
    app = cfg.load()
+
+**Note**: The ``Etcd.from_env()`` method has been removed. All parameters must be passed explicitly via ``__init__``.
 
 Environment Variables
 ---------------------
@@ -138,11 +151,20 @@ Then load it with python-dotenv:
 
    load_dotenv()  # Load .env file
 
+   import os
+   
+   etcd_source = Etcd(
+       host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+       port=int(os.environ.get("ETCD_PORT", "2379")),
+       prefix=os.environ.get("ETCD_PREFIX", "/app/"),
+       ca_cert=os.environ.get("ETCD_CA_CERT"),
+       cert_key=os.environ.get("ETCD_CERT_KEY"),
+       cert_cert=os.environ.get("ETCD_CERT_CERT"),
+   )
+   
    cfg = Config(
        model=AppConfig,
-       sources=[
-           Etcd.from_env(),  # Read from environment variables
-       ],
+       sources=[etcd_source],
    )
 
 TLS Configuration
@@ -257,7 +279,15 @@ Enable watch support for dynamic configuration updates. Etcd source can watch fo
    cfg = Config(
        model=AppConfig,
        sources=[
-           Etcd.from_env(prefix="/app/", watch=True),
+           Etcd(
+               host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+               port=int(os.environ.get("ETCD_PORT", "2379")),
+               prefix="/app/",
+               watch=True,
+               ca_cert=os.environ.get("ETCD_CA_CERT"),
+               cert_key=os.environ.get("ETCD_CERT_KEY"),
+               cert_cert=os.environ.get("ETCD_CERT_CERT"),
+           ),
        ],
    )
 
@@ -341,7 +371,15 @@ Watch events include:
    cfg = Config(
        model=AppConfig,
        sources=[
-           Etcd.from_env(prefix="/app/", watch=True),
+           Etcd(
+               host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+               port=int(os.environ.get("ETCD_PORT", "2379")),
+               prefix="/app/",
+               watch=True,
+               ca_cert=os.environ.get("ETCD_CA_CERT"),
+               cert_key=os.environ.get("ETCD_CERT_KEY"),
+               cert_cert=os.environ.get("ETCD_CERT_CERT"),
+           ),
        ],
    )
 
@@ -371,7 +409,15 @@ For automatic updates, use ``ConfigStore`` which handles watch automatically:
    cfg = Config(
        model=AppConfig,
        sources=[
-           Etcd.from_env(prefix="/app/", watch=True),
+           Etcd(
+               host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+               port=int(os.environ.get("ETCD_PORT", "2379")),
+               prefix="/app/",
+               watch=True,
+               ca_cert=os.environ.get("ETCD_CA_CERT"),
+               cert_key=os.environ.get("ETCD_CERT_KEY"),
+               cert_cert=os.environ.get("ETCD_CERT_CERT"),
+           ),
        ],
    )
 
@@ -402,7 +448,14 @@ Etcd source can be combined with other sources. Later sources override earlier o
    cfg = Config(
        model=AppConfig,
        sources=[
-           Etcd.from_env(prefix="/app/"),  # Load from etcd
+           Etcd(
+               host=os.environ.get("ETCD_HOST", "127.0.0.1"),
+               port=int(os.environ.get("ETCD_PORT", "2379")),
+               prefix="/app/",
+               ca_cert=os.environ.get("ETCD_CA_CERT"),
+               cert_key=os.environ.get("ETCD_CERT_KEY"),
+               cert_cert=os.environ.get("ETCD_CERT_CERT"),
+           ),  # Load from etcd
            Env(),                           # Env can override etcd
            CLI(),                           # CLI can override all
        ],
@@ -478,7 +531,7 @@ Nested Configuration
 Best Practices
 --------------
 
-1. **Use Environment Variables**: Use ``Etcd.from_env()`` instead of hardcoding connection parameters
+1. **Use Environment Variables**: Read environment variables yourself and pass them to ``Etcd()`` instead of hardcoding connection parameters
 2. **Use .env Files**: Manage configuration in development with ``.env`` files
 3. **Enable Watch**: Enable ``watch=True`` for configurations that need dynamic updates
 4. **Use Prefixes**: Use different etcd prefixes for different applications to avoid key conflicts

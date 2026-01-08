@@ -37,13 +37,38 @@ Use ``PriorityPolicy`` when you need different priority rules for different keys
        model=AppConfig,
        sources=[...],
        policy=PriorityPolicy(
-           default=["defaults", "env", "cli"],  # Default order
+           default=["defaults", "env", "cli"],  # Default order (can use source names or IDs)
            overrides={
                "secrets.*": ["defaults", "etcd"],  # Secrets: skip env
                "db.*": ["defaults", "env"],  # DB: skip CLI
            },
        ),
    )
+
+**Source Names vs Source IDs**:
+
+PriorityPolicy supports both source names and source IDs:
+
+- **Source names** (e.g., ``"yaml"``, ``"env"``): Match all sources of that type
+- **Source IDs** (e.g., ``"yaml:/etc/app/config.yaml"``, ``"system-config"``): Match specific source instances
+
+.. code-block:: python
+
+   # Multiple YAML sources with different priorities
+   cfg = Config(
+       model=AppConfig,
+       sources=[
+           sources.YAML("/etc/app/config.yaml", source_id="system-config"),
+           sources.YAML("~/.config/app.yaml", source_id="user-config"),
+           sources.Env(),
+       ],
+       policy=PriorityPolicy(
+           default=["defaults", "system-config", "user-config", "env"],
+           # system-config has lower priority than user-config
+       ),
+   )
+
+**Note**: When using source names in PriorityPolicy, all sources of that type are matched in their original order. When using source IDs, only the specific source instance is matched.
 
 Pattern Matching
 ----------------

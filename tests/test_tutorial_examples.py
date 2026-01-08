@@ -703,7 +703,8 @@ def test_advanced_custom_source():
     class JSONFileSource(Source):
         """Source that loads configuration from a JSON file."""
 
-        def __init__(self, file_path: str):
+        def __init__(self, file_path: str, source_id: str = None):
+            super().__init__(source_id=source_id or f"json_file:{os.path.abspath(file_path)}")
             self._file_path = file_path
 
         @property

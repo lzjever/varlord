@@ -79,19 +79,34 @@ class Source:
     - watch() -> Iterator[ChangeEvent]: Stream of changes for dynamic updates
     """
 
-    def __init__(self, model: Optional[Type[Any]] = None):
+    def __init__(
+        self,
+        model: Optional[Type[Any]] = None,
+        source_id: Optional[str] = None,
+    ):
         """Initialize Source.
 
         Args:
             model: Optional dataclass model for field filtering.
                   If None, model will be auto-injected by Config when used in Config.
                   If provided, this model will be used (allows override).
+            source_id: Optional unique identifier for this source.
+                      If None, will be auto-generated based on source type and key parameters.
 
         Note:
             - Recommended: Omit model parameter when used in Config (auto-injected).
             - Advanced: Provide model explicitly if using source independently or need different model.
+            - source_id: If not provided, will be auto-generated. Provide custom ID for advanced use cases.
         """
         self._model = model
+        self._source_id = source_id or self._generate_id()
+        # 状态跟踪
+        # "success": 成功加载
+        # "not_found": 文件不存在（正常情况，如本地没有 .env 文件）
+        # "failed": 真正的错误（如文件格式错误、权限问题等）
+        # "unknown": 未知状态
+        self._load_status = "unknown"
+        self._load_error = None  # 只在 failed 状态时记录错误信息
 
     @property
     def name(self) -> str:
@@ -99,8 +114,63 @@ class Source:
 
         Returns:
             Source name, used for debugging and priority configuration.
+            This is used for type identification and grouping.
+            Multiple sources can have the same name.
         """
         raise NotImplementedError("Subclasses must implement name property")
+
+    @property
+    def id(self) -> str:
+        """Return unique source identifier.
+
+        Returns:
+            Unique identifier string.
+            This is used for precise source identification in PriorityPolicy.
+            Each source instance should have a unique ID.
+        """
+        return self._source_id
+
+    def _generate_id(self) -> str:
+        """Generate unique ID based on source type and key parameters.
+
+        Subclasses should override this method to generate meaningful IDs.
+        Default implementation uses object ID as fallback.
+
+        Returns:
+            Unique identifier string
+        """
+        return f"{self._get_type_name()}:{id(self)}"
+
+    def _get_type_name(self) -> str:
+        """Get source type name (helper for _generate_id).
+
+        Returns:
+            Source type name (same as name property)
+        """
+        return self.name
+
+    @property
+    def load_status(self) -> str:
+        """Return load status: 'success', 'failed', 'not_found', 'unknown'.
+
+        Returns:
+            Status string indicating the last load() call result.
+            - 'success': 成功加载
+            - 'not_found': 文件不存在（正常情况，如本地没有 .env 文件）
+            - 'failed': 真正的错误（如文件格式错误、权限问题等）
+            - 'unknown': 未知状态
+        """
+        return self._load_status
+
+    @property
+    def load_error(self) -> Optional[str]:
+        """Return load error message if load failed.
+
+        Returns:
+            Error message string or None if load succeeded or file not found.
+            Note: 文件不存在（not_found）不记录错误信息，因为这是正常情况。
+        """
+        return self._load_error
 
     def load(self) -> Mapping[str, Any]:
         """Load configuration from this source.
@@ -144,4 +214,4 @@ class Source:
 
     def __repr__(self) -> str:
         """Return string representation."""
-        return f"<{self.__class__.__name__}(name={self.name!r})>"
+        return f"<{self.__class__.__name__}(name={self.name!r}, id={self.id!r})>"
