@@ -9,7 +9,7 @@ Installation
    pip install varlord
 
    # With optional dependencies
-   pip install varlord[dotenv,etcd]
+   pip install varlord[etcd]
 
 Basic Usage
 -----------
