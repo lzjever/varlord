@@ -184,24 +184,20 @@ class TestCheckVariablesWithDifferentSources:
         assert "cli" in output
         assert "<CLI" in output or "CLI" in output
 
-    @pytest.mark.requires_dotenv
-    @pytest.mark.integration
+    @pytest.mark.unit
     def test_with_dotenv_source(self):
         """Test check-variables output with DotEnv source."""
-        try:
-            cfg = Config(
-                model=SampleConfig,
-                sources=[sources.DotEnv(".env")],
-            )
+        cfg = Config(
+            model=SampleConfig,
+            sources=[sources.DotEnv(".env")],
+        )
 
-            output = cfg.format_diagnostic_table()
+        output = cfg.format_diagnostic_table()
 
-            # Check DotEnv source representation
-            assert "dotenv" in output
-            assert "<DotEnv" in output or "DotEnv" in output
-            assert ".env" in output  # Should show path
-        except ImportError:
-            pytest.skip("python-dotenv not installed")
+        # Check DotEnv source representation
+        assert "dotenv" in output
+        assert "<DotEnv" in output or "DotEnv" in output
+        assert ".env" in output  # Should show path
 
     @pytest.mark.requires_etcd
     @pytest.mark.integration
@@ -647,18 +643,14 @@ class TestSourceStringRepresentations:
         assert "CLI" in source_str
         assert isinstance(source_str, str)
 
-    @pytest.mark.requires_dotenv
-    @pytest.mark.integration
+    @pytest.mark.unit
     def test_dotenv_source_str(self):
         """Test DotEnv source string representation."""
-        try:
-            source = sources.DotEnv(".env")
-            source_str = str(source)
-            assert "DotEnv" in source_str
-            assert ".env" in source_str
-            assert isinstance(source_str, str)
-        except ImportError:
-            pytest.skip("python-dotenv not installed")
+        source = sources.DotEnv(".env")
+        source_str = str(source)
+        assert "DotEnv" in source_str
+        assert ".env" in source_str
+        assert isinstance(source_str, str)
 
     def test_defaults_source_str(self):
         """Test Defaults source string representation."""

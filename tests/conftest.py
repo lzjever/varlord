@@ -21,33 +21,24 @@ def has_etcd():
         import etcd3  # noqa: F401
 
         return True
-    except ImportError:
-        return False
-
-
-def has_dotenv():
-    """Check if python-dotenv is available."""
-    try:
-        from dotenv import dotenv_values  # noqa: F401
-
-        return True
-    except ImportError:
+    except (ImportError, TypeError):
+        # TypeError can occur with protobuf version incompatibility
         return False
 
 
 def pytest_configure(config):
     """Register custom markers for optional dependencies."""
     config.addinivalue_line("markers", "requires_etcd: mark test as requiring etcd3 package")
-    config.addinivalue_line(
-        "markers", "requires_dotenv: mark test as requiring python-dotenv package"
-    )
 
 
 def pytest_collection_modifyitems(config, items):
-    """Automatically deselect tests that require unavailable dependencies."""
-    # Check which dependencies are available
-    etcd_available = has_etcd()
-    dotenv_available = has_dotenv()
+    """Automatically deselect tests that require unavailable dependencies.
+
+    Note: dotenv, yaml, and toml are core dependencies and should not be checked here.
+    Only etcd is an optional dependency.
+    """
+    # Lazy dependency availability - only check when needed
+    etcd_available = None  # Cache for etcd availability
 
     deselected = []
     selected = []
@@ -59,12 +50,6 @@ def pytest_collection_modifyitems(config, items):
             for marker in item.iter_markers()
         )
 
-        # Check if test requires dotenv
-        requires_dotenv = any(
-            marker.name == "requires_dotenv" or marker.name == "dotenv"
-            for marker in item.iter_markers()
-        )
-
         # Check if test file name suggests it needs etcd
         if not requires_etcd:
             test_file = str(item.fspath)
@@ -73,22 +58,17 @@ def pytest_collection_modifyitems(config, items):
             ):
                 requires_etcd = True
 
-        # Check if test file name suggests it needs dotenv
-        if not requires_dotenv:
-            test_file = str(item.fspath)
-            if "dotenv" in test_file.lower() and "test_sources_dotenv" in test_file:
-                requires_dotenv = True
-
-        # Deselect if dependencies are missing
+        # Only check dependency availability if the test actually requires it
         should_deselect = False
         reason = None
 
-        if requires_etcd and not etcd_available:
-            should_deselect = True
-            reason = "etcd3 not installed"
-        elif requires_dotenv and not dotenv_available:
-            should_deselect = True
-            reason = "python-dotenv not installed"
+        if requires_etcd:
+            # Lazy check: only check etcd availability when needed
+            if etcd_available is None:
+                etcd_available = has_etcd()
+            if not etcd_available:
+                should_deselect = True
+                reason = "etcd3 not installed or incompatible"
 
         if should_deselect:
             deselected.append(item)

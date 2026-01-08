@@ -81,17 +81,9 @@ def test_format_source_help_with_cli():
     assert "api-key" in help_text.lower() or "api_key" in help_text.lower()
 
 
-@pytest.mark.requires_dotenv
-@pytest.mark.integration
+@pytest.mark.unit
 def test_format_source_help_with_dotenv():
     """Test source help formatting with DotEnv source."""
-    try:
-        from varlord.sources.dotenv import DotEnv
-
-        # Try to create instance to check if dotenv is available
-        _ = DotEnv(".env", model=None)
-    except ImportError:
-        pytest.skip("python-dotenv not installed")
 
     @dataclass
     class Config:

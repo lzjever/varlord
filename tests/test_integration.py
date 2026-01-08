@@ -6,10 +6,15 @@ import os
 import sys
 from dataclasses import dataclass
 
+import pytest
+
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from varlord import Config, PriorityPolicy, sources  # noqa: E402
+
+# Mark all tests in this file as integration tests
+pytestmark = pytest.mark.integration
 
 
 def test_full_workflow():

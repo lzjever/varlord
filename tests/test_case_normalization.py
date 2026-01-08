@@ -72,18 +72,11 @@ def test_cli_case_normalization():
         sys.argv = original_argv
 
 
-@pytest.mark.requires_dotenv
-@pytest.mark.integration
+@pytest.mark.unit
 def test_dotenv_case_normalization():
     """Test that DotEnv source normalizes keys to lowercase."""
     import tempfile
 
-    try:
-        from varlord.sources.dotenv import DotEnv
-
-        _ = DotEnv(".env", model=None)
-    except ImportError:
-        pytest.skip("python-dotenv not installed")
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".env", delete=False) as f:
         f.write("HOST=dotenv-host\n")
@@ -109,18 +102,11 @@ def test_dotenv_case_normalization():
         os.unlink(temp_path)
 
 
-@pytest.mark.requires_dotenv
-@pytest.mark.integration
+@pytest.mark.unit
 def test_unified_case_across_sources():
     """Test that all sources use lowercase keys for consistency."""
     import tempfile
 
-    try:
-        from varlord.sources.dotenv import DotEnv
-
-        _ = DotEnv(".env", model=None)
-    except ImportError:
-        pytest.skip("python-dotenv not installed")
 
     original_argv = sys.argv[:]
 
