@@ -35,4 +35,4 @@ __all__ = [
     "list_global_configs",
 ]
 
-__version__ = "0.5.0"
+__version__ = "0.6.0"
