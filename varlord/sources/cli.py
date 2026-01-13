@@ -164,8 +164,30 @@ class CLI(Source):
                             dest=argparse_dest,
                             required=False,  # Always False - validation handled by Config
                         )
-                except Exception:
+                        # Also support double underscore format (e.g., --sandbox__default_session_id)
+                        # This allows users to use either --sandbox-default-session-id or --sandbox__default_session_id
+                        if "." in normalized_key:
+                            arg_name_underscore = normalized_key.replace(".", "__")
+                            try:
+                                parser.add_argument(
+                                    f"--{arg_name_underscore}",
+                                    type=make_type_converter(field_type),
+                                    default=None,
+                                    dest=argparse_dest,
+                                    required=False,
+                                )
+                            except Exception as e:
+                                # If adding argument fails, log but continue
+                                import logging
+
+                                logging.debug(
+                                    f"Failed to add argument --{arg_name_underscore}: {e}"
+                                )
+                except Exception as e:
                     # If adding argument fails, skip it
+                    import logging
+
+                    logging.debug(f"Failed to add argument for {normalized_key}: {e}")
                     pass
 
             # Parse only known arguments to avoid errors
