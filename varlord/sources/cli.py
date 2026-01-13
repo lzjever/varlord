@@ -15,27 +15,70 @@ from varlord.metadata import get_all_field_keys, get_all_fields_info
 from varlord.sources.base import Source
 
 
+def normalized_key_to_cli_arg(normalized_key: str) -> str:
+    """Convert normalized key to CLI argument format.
+
+    Mapping rules:
+    - Dots (.) become double dashes (--)
+    - Underscores (_) become single dashes (-)
+
+    Examples:
+    - "host" -> "host"
+    - "k8s_pod_name" -> "k8s-pod-name"
+    - "db.host" -> "db--host"
+    - "aaa.bbb.ccc_dd" -> "aaa--bbb--ccc-dd"
+    """
+    # Replace dots with double dashes, underscores with single dashes
+    return normalized_key.replace(".", "--").replace("_", "-")
+
+
+def cli_arg_to_normalized_key(cli_arg: str) -> str:
+    """Convert CLI argument to normalized key.
+
+    Mapping rules:
+    - Double dashes (--) become dots (.)
+    - Single dashes (-) become underscores (_)
+
+    Examples:
+    - "host" -> "host"
+    - "k8s-pod-name" -> "k8s_pod_name"
+    - "db--host" -> "db.host"
+    - "aaa--bbb--ccc-dd" -> "aaa.bbb.ccc_dd"
+    """
+    # Split by double dashes first
+    parts = cli_arg.split("--")
+    # Replace single dashes with underscores in each part
+    normalized_parts = [part.replace("-", "_") for part in parts]
+    # Join with dots
+    return ".".join(normalized_parts)
+
+
 class CLI(Source):
     """Source that loads configuration from command-line arguments.
 
     Uses argparse to parse command-line arguments. Only adds arguments for
     fields defined in the model. Model is required and will be auto-injected by Config.
 
+    Mapping rules:
+    - Double dashes (--) in CLI arguments become dots (.) in normalized keys
+    - Single dashes (-) in CLI arguments become underscores (_) in normalized keys
+
+    Examples:
+    - --host → host
+    - --k8s-pod-name → k8s_pod_name
+    - --db--host → db.host
+    - --aaa--bbb--ccc-dd → aaa.bbb.ccc_dd
+
     Supports:
     - Automatic type inference from model fields
     - Boolean flags (--flag / --no-flag)
-    - Nested keys via --db-host style arguments (maps to db.host)
+    - Nested keys via double dashes (--db--host maps to db.host)
     - Help text from field metadata
-    - Required arguments from field metadata
-
-    Keys are normalized to dot notation for consistency with other sources:
-    - --db-host → db.host (not db_host)
-    - --api-timeout → api.timeout (not api_timeout)
 
     Example:
         >>> @dataclass
         ... class Config:
-        ...     host: str = field()  # Required by default
+        ...     host: str = field()
         >>> # Command line: python app.py --host 0.0.0.0
         >>> source = CLI(model=Config)
         >>> source.load()
@@ -84,7 +127,6 @@ class CLI(Source):
         Raises:
             ValueError: If model is not provided
         """
-        # Reset status
         self._load_status = "unknown"
         self._load_error = None
 
@@ -96,16 +138,13 @@ class CLI(Source):
                     "When used independently, provide model explicitly: CLI(model=AppConfig)"
                 )
 
-            # Get all valid field keys and info from model
             valid_keys = get_all_field_keys(self._model)
             field_info_map = {
                 info.normalized_key: info for info in get_all_fields_info(self._model)
             }
 
             parser = argparse.ArgumentParser(allow_abbrev=False, add_help=False)
-            key_mapping = {}  # normalized_key -> argparse_dest_key
 
-            # Only add arguments for model fields
             for normalized_key in valid_keys:
                 if normalized_key not in field_info_map:
                     continue
@@ -113,107 +152,61 @@ class CLI(Source):
                 field_info = field_info_map[normalized_key]
                 field_type = field_info.type
 
-                # Convert normalized key to argument names
-                arg_name_hyphen = normalized_key.replace(".", "-").replace("_", "-")
+                cli_arg_name = normalized_key_to_cli_arg(normalized_key)
                 argparse_dest = normalized_key.replace(".", "_")
-                key_mapping[normalized_key] = argparse_dest
-
-                # Note: We don't use argparse's help parameter anymore since we
-                # generate help text ourselves via format_help() method.
-                # This gives varlord complete control over help output.
 
                 try:
                     if field_type is bool:
-                        # Boolean flags: --flag and --no-flag
-                        # Don't set required=True - validation handled by Config
-                        # Don't use argparse's help parameter - we generate help ourselves
                         parser.add_argument(
-                            f"--{arg_name_hyphen}",
+                            f"--{cli_arg_name}",
                             action="store_true",
                             default=None,
                             dest=argparse_dest,
-                            required=False,  # Always False - validation handled by Config
+                            required=False,
                         )
                         parser.add_argument(
-                            f"--no-{arg_name_hyphen}",
+                            f"--no-{cli_arg_name}",
                             dest=argparse_dest,
                             action="store_false",
                             default=None,
                         )
                     else:
-                        # Use a wrapper to handle type conversion errors gracefully
+
                         def make_type_converter(ftype):
                             def converter(value):
                                 try:
                                     return ftype(value)
                                 except (ValueError, TypeError):
-                                    # If conversion fails, return as string
                                     return value
 
                             return converter
 
-                        # Don't set required=True here. Let Config.validate() handle
-                        # required field validation after merging all sources.
-                        # Don't use argparse's help parameter - we generate help ourselves
-                        # This allows show_source_help to work properly and gives varlord
-                        # complete control over help output.
                         parser.add_argument(
-                            f"--{arg_name_hyphen}",
+                            f"--{cli_arg_name}",
                             type=make_type_converter(field_type),
                             default=None,
                             dest=argparse_dest,
-                            required=False,  # Always False - validation handled by Config
+                            required=False,
                         )
-                        # Also support double underscore format (e.g., --sandbox__default_session_id)
-                        # This allows users to use either --sandbox-default-session-id or --sandbox__default_session_id
-                        if "." in normalized_key:
-                            arg_name_underscore = normalized_key.replace(".", "__")
-                            try:
-                                parser.add_argument(
-                                    f"--{arg_name_underscore}",
-                                    type=make_type_converter(field_type),
-                                    default=None,
-                                    dest=argparse_dest,
-                                    required=False,
-                                )
-                            except Exception as e:
-                                # If adding argument fails, log but continue
-                                import logging
-
-                                logging.debug(
-                                    f"Failed to add argument --{arg_name_underscore}: {e}"
-                                )
                 except Exception as e:
-                    # If adding argument fails, skip it
                     import logging
 
                     logging.debug(f"Failed to add argument for {normalized_key}: {e}")
-                    pass
 
-            # Parse only known arguments to avoid errors
-            # Note: We don't set required=True in argparse, because validation
-            # is handled by Config.validate() after merging all sources.
-            # This allows show_source_help to work properly.
             argv = self._argv if self._argv is not None else sys.argv[1:]
-
-            # Filter out --help and -h to allow application to handle them
-            # argparse's add_help=False already disables automatic help, but we
-            # also filter these args so they don't interfere with parsing
             filtered_argv = [arg for arg in argv if arg not in ("--help", "-h")]
 
             try:
                 args, _ = parser.parse_known_args(filtered_argv)
             except SystemExit:
-                # If argparse raises SystemExit (e.g., missing required args),
-                # we catch it and return empty dict. Validation will be handled
-                # by Config.validate() which can show proper source help.
-                # This allows the unified validation flow to work correctly.
-                self._load_status = "success"  # SystemExit is expected, not an error
+                self._load_status = "success"
                 return {}
 
-            # Convert to dict with normalized keys
             result = {}
-            for normalized_key, argparse_dest in key_mapping.items():
+            for normalized_key in valid_keys:
+                if normalized_key not in field_info_map:
+                    continue
+                argparse_dest = normalized_key.replace(".", "_")
                 value = getattr(args, argparse_dest, None)
                 if value is not None:
                     result[normalized_key] = value
@@ -253,25 +246,18 @@ class CLI(Source):
         optional_fields = []
 
         for field_info in field_infos:
-            # Convert normalized key to argument name
-            arg_name = field_info.normalized_key.replace(".", "-").replace("_", "-")
-
-            # Get help text (prefer help over description)
+            arg_name = normalized_key_to_cli_arg(field_info.normalized_key)
             help_text = field_info.help or field_info.description or ""
-
-            # Get type name for display
             type_name = (
                 field_info.type.__name__
                 if hasattr(field_info.type, "__name__")
                 else str(field_info.type)
             )
 
-            # Format default value if exists
             default_str = ""
             if field_info.required:
                 default_str = " (required)"
             elif field_info.default is not ...:
-                # Format default value nicely
                 if field_info.default is None:
                     default_str = " (default: None)"
                 elif isinstance(field_info.default, str):
@@ -279,7 +265,6 @@ class CLI(Source):
                 else:
                     default_str = f" (default: {field_info.default})"
             elif field_info.default_factory is not ...:
-                # For default_factory, just show it's a factory
                 default_str = " (has default factory)"
 
             field_entry = {
@@ -321,12 +306,11 @@ class CLI(Source):
                     lines.append(arg_line)
             lines.append("")
 
-        # Add boolean flags note
         bool_fields = [f for f in field_infos if f.type is bool]
         if bool_fields:
             lines.append("Boolean Flags:")
             for field_info in bool_fields:
-                arg_name = field_info.normalized_key.replace(".", "-").replace("_", "-")
+                arg_name = normalized_key_to_cli_arg(field_info.normalized_key)
                 help_text = field_info.help or field_info.description or ""
                 flag_line = f"  --{arg_name} / --no-{arg_name}"
                 if help_text:

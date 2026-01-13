@@ -35,7 +35,8 @@ def test_cli_nested_key_mapping():
     original_argv = sys.argv[:]
 
     try:
-        sys.argv = ["test", "--db-host", "cli-host", "--db-port", "9999"]
+        # With new mapping rules: double dash (--) represents nesting
+        sys.argv = ["test", "--db--host", "cli-host", "--db--port", "9999"]
 
         cfg = Config(
             model=AppConfig,
@@ -64,7 +65,8 @@ def test_env_cli_override_nested():
         os.environ["DB__PORT"] = "8888"
 
         # Set CLI argument (should override env)
-        sys.argv = ["test", "--db-host", "cli-host"]
+        # With new mapping rules: double dash (--) represents nesting
+        sys.argv = ["test", "--db--host", "cli-host"]
 
         cfg = Config(
             model=AppConfig,
@@ -97,7 +99,8 @@ def test_unified_key_format():
         os.environ["DB__HOST"] = "env-host"
 
         # CLI: db.host (should override)
-        sys.argv = ["test", "--db-host", "cli-host"]
+        # With new mapping rules: double dash (--) represents nesting
+        sys.argv = ["test", "--db--host", "cli-host"]
 
         cfg = Config(
             model=AppConfig,

@@ -18,7 +18,7 @@ def test_getting_started_basic():
 
     from varlord import Config
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="127.0.0.1",
@@ -51,7 +51,7 @@ def test_getting_started_access():
 
     from varlord import Config
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="127.0.0.1",
@@ -82,7 +82,7 @@ def test_multiple_sources_priority():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="127.0.0.1",
@@ -121,7 +121,7 @@ def test_multiple_sources_cli():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="127.0.0.1",
@@ -159,7 +159,7 @@ def test_multiple_sources_from_model():
 
     from varlord import Config
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="127.0.0.1",
@@ -196,7 +196,7 @@ def test_nested_configuration_basic():
 
     from varlord import Config
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class DBConfig:
         host: str = field(
             default="localhost",
@@ -208,7 +208,7 @@ def test_nested_configuration_basic():
             default="mydb",
         )  # noqa: F821
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -238,7 +238,7 @@ def test_nested_configuration_env():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class DBConfig:
         host: str = field(
             default="localhost",
@@ -250,7 +250,7 @@ def test_nested_configuration_env():
             default="mydb",
         )  # noqa: F821
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -291,7 +291,7 @@ def test_nested_configuration_cli():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class DBConfig:
         host: str = field(
             default="localhost",
@@ -300,7 +300,7 @@ def test_nested_configuration_cli():
             default=5432,
         )  # noqa: F821
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -314,7 +314,8 @@ def test_nested_configuration_cli():
 
     original_argv = sys.argv[:]
     try:
-        sys.argv = ["app.py", "--db-host", "db.example.com", "--db-port", "3306"]
+        # With new mapping rules: double dash (--) represents nesting
+        sys.argv = ["app.py", "--db--host", "db.example.com", "--db--port", "3306"]
 
         cfg = Config(
             model=AppConfig,
@@ -337,7 +338,7 @@ def test_nested_configuration_deep():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class CacheConfig:
         enabled: bool = field(
             default=False,
@@ -346,7 +347,7 @@ def test_nested_configuration_deep():
             default=3600,
         )  # noqa: F821
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class DBConfig:
         host: str = field(
             default="localhost",
@@ -358,7 +359,7 @@ def test_nested_configuration_deep():
             default_factory=lambda: CacheConfig(),
         )
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -398,7 +399,7 @@ def test_validation_basic():
     from varlord import Config
     from varlord.validators import validate_not_empty, validate_port
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -429,7 +430,7 @@ def test_validation_multiple_sources():
     from varlord import Config, sources
     from varlord.validators import ValidationError, validate_port
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         port: int = field(
             default=8000,
@@ -461,7 +462,7 @@ def test_validation_nested():
     from varlord import Config
     from varlord.validators import validate_not_empty, validate_port
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class DBConfig:
         host: str = field(
             default="localhost",
@@ -474,7 +475,7 @@ def test_validation_nested():
             validate_not_empty(self.host)
             validate_port(self.port)
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -506,7 +507,7 @@ def test_validation_cross_field():
     from varlord import Config
     from varlord.validators import ValidationError, validate_port
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         app_port: int = field(
             default=8000,
@@ -546,7 +547,7 @@ def test_dynamic_updates_basic():
 
     from varlord import Config
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -573,7 +574,7 @@ def test_dynamic_updates_manual_reload():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         port: int = field(
             default=8000,
@@ -604,7 +605,7 @@ def test_dynamic_updates_subscribe():
 
     from varlord import Config, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         port: int = field(
             default=8000,
@@ -647,7 +648,7 @@ def test_advanced_priority_policy():
 
     from varlord import Config, PriorityPolicy, sources
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",
@@ -720,7 +721,7 @@ def test_advanced_custom_source():
             except (FileNotFoundError, json.JSONDecodeError):
                 return {}
 
-    @dataclass(frozen=True)  # noqa: F821
+    @dataclass  # noqa: F821
     class AppConfig:
         host: str = field(
             default="0.0.0.0",

@@ -142,5 +142,6 @@ def test_cli_format_help_nested_fields():
     cli = CLI(model=AppConfig)
     help_text = cli.format_help(prog="test.py")
 
-    assert "--db-host STR" in help_text
+    # With new mapping rules: double dash (--) represents nesting
+    assert "--db--host STR" in help_text
     assert "Database host" in help_text

@@ -128,8 +128,8 @@ CLI (Command-Line Arguments)
 
 1. **Model-based filtering**: Only arguments for fields defined in the model are parsed
 2. **Prefix removal**: The ``--`` prefix is removed
-3. **Hyphen and underscore equivalence**: Both ``-`` and ``_`` are treated the same
-4. **Unified normalization**: ``__`` → ``.``, ``_`` preserved, lowercase
+3. **Double dash for nesting**: ``--`` (double dash) → ``.`` (dot) for nested configuration
+4. **Single dash to underscore**: ``-`` (single dash) → ``_`` (underscore) in normalized keys
 5. **Type conversion**: Values are converted based on model field types
 
 **Example**:
@@ -144,17 +144,17 @@ CLI (Command-Line Arguments)
        k8s_pod_name: str = field(default="default-pod")
        debug: bool = field(default=False)
    
-   # Command line: python app.py --host 0.0.0.0 --port 9000 --db-host localhost --k8s-pod-name my-pod --debug
-   # Or equivalently: --db_host, --k8s_pod_name (both work)
+   # Command line: python app.py --host 0.0.0.0 --port 9000 --db--host localhost --k8s-pod-name my-pod --debug
    
    source = CLI(model=AppConfig)
    # Returns: {"host": "0.0.0.0", "port": 9000, "db.host": "localhost", "k8s_pod_name": "my-pod", "debug": True}
 
 **Mapping Details**:
 
-- ``--host`` → ``host``
-- ``--db-host`` or ``--db_host`` → ``db.host`` (both ``-`` and ``_`` work, ``__`` becomes ``.``)
-- ``--k8s-pod-name`` or ``--k8s_pod_name`` → ``k8s_pod_name`` (both ``-`` and ``_`` work, single ``_`` preserved)
+- ``--host`` → ``host`` (flat field, no nesting)
+- ``--k8s-pod-name`` → ``k8s_pod_name`` (single dash becomes underscore)
+- ``--db--host`` → ``db.host`` (double dash becomes dot for nesting)
+- ``--aaa--bbb--ccc-dd`` → ``aaa.bbb.ccc_dd`` (double dashes become dots, single dashes become underscores)
 - ``--debug`` → ``debug`` (boolean flag, becomes ``True``)
 - ``--no-debug`` → ``debug: False`` (negation flag)
 
@@ -162,9 +162,9 @@ CLI (Command-Line Arguments)
 
 - Model is required and will be auto-injected by ``Config`` if not provided
 - Only arguments for model fields are parsed
-- CLI treats hyphens and underscores equivalently, allowing flexible command-line syntax:
-  - ``--db-host`` and ``--db_host`` both work (if field is ``db__host`` or ``db_host``)
-  - The unified normalization rule applies after converting ``-`` to ``_``
+- **Double dash (``--``) is required to represent nesting**: Use ``--sandbox--default-session-id`` for ``sandbox.default_session_id``
+- **Single dash (``-``) becomes underscore (``_``)**: Use ``--k8s-pod-name`` for ``k8s_pod_name``
+- Underscores (``_``) are not allowed in CLI arguments - only dashes (``-``) should be used
 - Help text and descriptions are automatically extracted from field metadata
 
 DotEnv (.env Files)
@@ -451,23 +451,23 @@ Comparison Table
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
 | Flattening       | N/A              | N/A              | N/A              | N/A              | Recursive        | Recursive        | Recursive        |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| ``__`` handling  | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   |
+| ``__`` handling  | ``__`` → ``.``   | ``__`` → ``.``   | ``--`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   | ``__`` → ``.``   |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| ``_`` handling   | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        | Preserved        |
+| ``_`` handling   | Preserved        | Preserved        | ``-`` → ``_``    | Preserved        | Preserved        | Preserved        | Preserved        |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| CLI special      | N/A              | N/A              | ``-`` = ``_``    | N/A              | N/A              | N/A              | N/A              |
+| CLI special      | N/A              | N/A              | ``--→.``,``-→_`` | N/A              | N/A              | N/A              | N/A              |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| Nested keys      | ``parent__child``| ``PARENT__CHILD``|``--parent-child``| ``PARENT__CHILD``| ``parent: child:``| ``{"parent": {}}``| ``[parent]``   |
+| Nested keys      | ``parent__child``| ``PRT__CHLD``    |``--parent-child``| ``PRT__CHLD``    |``parent: child:``| ``{"PRT":{}}``   | ``[parent]``     |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
 | Type conversion  | Native types     | Strings          | Based on model   | Strings          | Native types     | Native types     | Native types     |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
 | Missing file     | N/A              | N/A              | N/A              | Empty dict       | Empty dict*      | Empty dict*      | Empty dict*      |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| Example input    | ``host``         | ``HOST``         | ``--host``       | ``HOST``         | ``host: ...``     | ``"host": ...``   | ``host = ...`` |
+| Example input    | ``host``         | ``HOST``         | ``--host``       | ``HOST``         | ``host: ...``     | ``"host": ...`` | ``host = ...``   |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
 | Example output   | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         | ``host``         |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
-| Nested example   | ``db__host``     | ``DB__HOST``     | ``--db-host``    | ``DB__HOST``     | ``db: host:``    |``"db": {"host"}``| ``[db] host``    |
+| Nested example   | ``db__host``     | ``DB__HOST``     | ``--db--host``   | ``DB__HOST``     | ``db: host:``    |``"db": {"host"}``| ``[db] host``    |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
 | Nested output    | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      | ``db.host``      |
 +------------------+------------------+------------------+------------------+------------------+------------------+------------------+------------------+
@@ -536,7 +536,7 @@ To use nested configuration, use double underscores (``__``) in your source keys
        db__host: str = field(default="")
        db__port: int = field(default=5432)
    
-   # Command line: --db-host localhost --db-port 5432
+   # Command line: --db--host localhost --db--port 5432
    source = CLI(model=AppConfig)
    # Returns: {"db.host": "localhost", "db.port": "5432"}
    # Automatically maps to nested dataclass structure
@@ -633,10 +633,9 @@ each source handles overriding such fields:
 .. code-block:: python
 
    # Command line: --k8s-pod-name my-pod
-   # Or: --k8s_pod_name my-pod (both work)
    source = CLI(model=AppConfig)
    # Returns: {"k8s_pod_name": "my-pod"}
-   # Note: Both hyphens and underscores work, unified normalization preserves single _
+   # Note: Single dashes become underscores in normalized keys
 
 **DotEnv**:
 
@@ -675,9 +674,14 @@ each source handles overriding such fields:
 
 **Summary**:
 
-All sources use the unified normalization rule:
+Most sources use the unified normalization rule:
 - **Single underscores (``_``)**: Preserved in output
 - **Double underscores (``__``)**: Converted to dots (``.``) for nesting
+- **All keys**: Converted to lowercase
+
+CLI uses a different mapping:
+- **Single dashes (``-``)**: Converted to underscores (``_``) in normalized keys
+- **Double dashes (``--``)**: Converted to dots (``.``) for nesting
 - **All keys**: Converted to lowercase
 
 This ensures consistent behavior across all sources, making it easy to override
@@ -692,23 +696,21 @@ Best Practices
    - All keys lowercase
    This ensures consistent behavior across all sources.
 
-2. **Nested configuration**: Use double underscores (``__``) in your source keys to create
-   nested configuration:
+2. **Nested configuration**: Use double dashes (``--``) in CLI arguments or double underscores (``__``) in other sources to create nested configuration:
    - Environment: ``DB__HOST=localhost`` → ``db.host``
-   - CLI: ``--db-host`` or ``--db_host`` → ``db.host``
+   - CLI: ``--db--host`` → ``db.host``
    - DotEnv: ``DB__HOST=localhost`` → ``db.host``
    - Etcd: ``/app/DB/Host`` → ``db.host``
 
-3. **Flat keys with underscores**: Use single underscores (``_``) for flat keys:
+3. **Flat keys with underscores**: Use single dashes (``-``) in CLI arguments or single underscores (``_``) in other sources for flat keys:
    - Environment: ``K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
-   - CLI: ``--k8s-pod-name`` or ``--k8s_pod_name`` → ``k8s_pod_name``
+   - CLI: ``--k8s-pod-name`` → ``k8s_pod_name``
    - DotEnv: ``K8S_POD_NAME=my-pod`` → ``k8s_pod_name``
 
 4. **Model-based filtering**: All sources (except Defaults) use model fields to filter which
    variables are loaded. Define your model fields to match the normalized keys you want to use.
 
-5. **CLI flexibility**: CLI treats hyphens and underscores equivalently, so you can use
-   either ``--db-host`` or ``--db_host`` (both work)
+5. **CLI mapping**: CLI uses dashes only - double dashes (``--``) for nesting, single dashes (``-``) for underscores. Underscores are not allowed in CLI arguments.
 
 6. **Type safety**: Use CLI or model-based sources when you need automatic type conversion
 
