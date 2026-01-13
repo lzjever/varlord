@@ -14,7 +14,7 @@ def normalize_key(key: str) -> str:
     """Unified key normalization function.
 
     Applies consistent normalization rules across all sources:
-    - Double underscores (__) are converted to dots (.) for nesting
+    - Double underscores (``__``) are converted to dots (.) for nesting
     - Single underscores (_) are preserved (only case is converted)
     - Keys are converted to lowercase
 
@@ -24,7 +24,7 @@ def normalize_key(key: str) -> str:
     Returns:
         Normalized key in lowercase with unified separator rules
 
-    Examples:
+    Examples::
         >>> normalize_key("APP_DB__HOST")
         'app.db.host'
         >>> normalize_key("K8S_POD_NAME")

@@ -108,8 +108,6 @@ autodoc_typehints_description_target = 'documented'
 # The error occurs because Sphinx may interpret "etcd" in docstrings as a reference
 suppress_warnings = [
     'ref.docutils',  # Suppress docutils reference warnings (includes "Unknown target name" errors)
-    'ref.any',       # Suppress any reference warnings
-    'ref.python',    # Suppress Python reference warnings
 ]
 
 # Configure docutils to be less strict about unknown references

@@ -42,7 +42,7 @@ class Env(Source):
                   Only variables that map to model fields will be loaded.
                   If None, model will be auto-injected by Config when used in Config.
                   If provided, this model will be used (allows override).
-            prefix: Optional prefix for environment variables (e.g., "TITAN__").
+            prefix: Optional prefix for environment variables (e.g., ``TITAN__``).
                    If None, matches all environment variables that map to model fields.
                    If provided, only variables starting with this prefix (uppercase) are considered.
             source_id: Optional unique identifier (default: "env" or "env:{prefix}")

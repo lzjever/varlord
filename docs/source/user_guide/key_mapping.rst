@@ -101,13 +101,21 @@ Env (Environment Variables)
 - ``K8S_POD_NAME`` → ``k8s_pod_name`` (single ``_`` preserved)
 - ``OTHER_VAR`` → ignored (not in model fields)
 
+**Prefix Filtering** (optional):
+
+- Use ``prefix`` parameter to filter environment variables by prefix
+- Example: ``sources.Env(prefix="APP__")`` only loads variables starting with ``APP__``
+- Case-insensitive matching (e.g., ``app__`` matches ``APP__``)
+- Prefix is automatically removed before key normalization
+- Useful for isolating application-specific environment variables in containerized deployments
+
 **Notes**:
 
 - Model is required and will be auto-injected by ``Config`` if not provided
 - All environment variables are checked against model fields
 - Only variables that map to model fields are loaded
-- No prefix filtering - use model fields to control which variables are loaded
-- If you want to use a prefix in environment variable names, ensure your model field names match after normalization
+- If ``prefix`` is not provided, all environment variables matching model fields are loaded
+- Prefix matching is case-insensitive for better compatibility
 
 CLI (Command-Line Arguments)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

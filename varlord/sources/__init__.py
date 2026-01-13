@@ -6,10 +6,10 @@ Provides various configuration sources:
 - DotEnv: From .env files
 - Env: From environment variables
 - CLI: From command-line arguments
-- YAML: From YAML files (optional, requires ``yaml`` extra)
+- YAML: From YAML files (optional, requires 'yaml' extra)
 - JSON: From JSON files (standard library, no extra required)
-- TOML: From TOML files (optional, requires ``toml`` extra for Python < 3.11)
-- Etcd: From ``etcd`` key-value store (optional, requires ``etcd`` extra)
+- TOML: From TOML files (optional, requires 'toml' extra for Python < 3.11)
+- Etcd: From etcd key-value store (optional, requires 'etcd' extra)
 
 Note: Optional sources require their respective extras to be installed.
 """

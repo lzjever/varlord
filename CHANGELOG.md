@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-01-09
+
+### Added
+- **Configuration Export Functionality**: New methods to export current configuration to various file formats
+  - `Config.to_dict()` - Get current configuration as dictionary
+  - `Config.dump_json(file_path, ...)` - Export configuration to JSON file
+  - `Config.dump_yaml(file_path, ...)` - Export configuration to YAML file
+  - `Config.dump_toml(file_path, ...)` - Export configuration to TOML file
+  - `Config.dump_env(file_path, ...)` - Export configuration to .env file
+  - All export methods handle nested dataclass structures correctly
+  - Support for custom options (prefix, uppercase, nested separator for .env export)
+  - Clear error messages for missing optional dependencies (PyYAML, tomli-w)
+- **Enhanced Diagnostic Table**: Improved `--check-variables` output
+  - Now filters out non-leaf nodes (intermediate nested config objects)
+  - Only displays leaf-level configuration variables (e.g., `ai.completion.model` instead of `ai.completion`)
+  - Cleaner, more focused diagnostic output for nested configurations
+
+### Changed
+- `format_diagnostic_table()` now only shows leaf nodes in variable status table
+- Export methods use `asdict()` for proper nested dataclass conversion
+
 ## [0.7.0] - 2026-01-08
 
 ### Added

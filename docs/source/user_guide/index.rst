@@ -13,6 +13,7 @@ This guide covers all aspects of using Varlord.
    key_mapping
    cli_commands
    subcommands
+   export
    custom_sources
    priority
    validation
