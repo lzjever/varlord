@@ -107,11 +107,13 @@ The ``--check-variables`` (or ``-cv``) option displays comprehensive diagnostic 
 about your configuration:
 
 1. **Variable Status Table**: Shows all configuration variables with:
-   - Variable name
+   - Variable name (only leaf nodes are shown - nested intermediate objects like `ai.completion` are filtered out)
    - Required/Optional status
    - Current status (Loaded, Using Default, Missing, etc.)
    - Source (which source provided the value)
    - Value (truncated if too long)
+   
+   **Note**: For nested configurations, only leaf-level variables are displayed. For example, if you have `ai.completion.model` and `ai.completion.api_key`, the table will show these two variables but not the intermediate `ai.completion` object.
 
 2. **Source Information Table**: Shows detailed diagnostics for each source:
    - Priority order (1 = lowest, higher numbers = higher priority)
@@ -131,7 +133,13 @@ Example diagnostic output:
    | host                                       | Required | Missing       | defaults | None   |
    | port                                       | Optional | Using Default | defaults | 8000   |
    | debug                                      | Optional | Using Default | defaults | False  |
+   | ai.completion.model                        | Required | Loaded        | yaml     | deepseek-chat |
+   | ai.completion.api_key                      | Required | Loaded        | yaml     | sk-... |
+   | ai.performance.max_tokens_input           | Optional | Loaded        | yaml     | 131072 |
    +--------------------------------------------+----------+---------------+----------+--------+
+   
+   Note: Intermediate nested objects (like `ai.completion` or `ai.performance`) are not shown,
+   only the leaf-level configuration variables are displayed.
 
    Configuration Source Priority and Details:
 

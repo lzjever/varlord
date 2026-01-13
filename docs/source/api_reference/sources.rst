@@ -27,6 +27,5 @@ Etcd Source
 
 .. automodule:: varlord.sources.etcd
    :members:
-   :special-members: __init__
+   :special-members: \_\_init\_\_
    :exclude-members: _get_client, _model
-

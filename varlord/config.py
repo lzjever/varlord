@@ -6,7 +6,8 @@ Provides high-level API for loading and managing configuration.
 
 from __future__ import annotations
 
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any, Optional, Union
 
 from varlord.policy import PriorityPolicy
 from varlord.resolver import Resolver
@@ -34,8 +35,8 @@ class Config:
         ...         sources.CLI(),  # Model auto-injected
         ...     ],
         ... )
-        >>> app = cfg.load()
-        >>> print(app.host)
+        >>> config = cfg.load()
+        >>> print(config.host)
     """
 
     def __init__(
@@ -1040,6 +1041,129 @@ class Config:
         from varlord.metadata import get_all_fields_info
 
         return get_all_fields_info(self._model)
+
+    def to_dict(self, validate: bool = True) -> dict[str, Any]:
+        """Get current configuration as dictionary.
+
+        Args:
+            validate: Whether to validate required fields (default: True)
+
+        Returns:
+            Dictionary representation of the current configuration
+
+        Example:
+            >>> cfg = Config(model=AppConfig, sources=[...])
+            >>> config_dict = cfg.to_dict()
+            >>> print(config_dict["host"])
+        """
+        from dataclasses import asdict, is_dataclass
+
+        # Load config and convert to model instance first
+        config_obj = self.load(validate=validate)
+        # Convert dataclass instance to dict (handles nested dataclasses)
+        if is_dataclass(config_obj):
+            return asdict(config_obj)
+        else:
+            # Fallback: if not a dataclass, try the old method
+            config_dict = self._load_config_dict(validate=validate)
+            return self._flatten_to_nested(config_dict, self._model)
+
+    def dump_json(
+        self, file_path: Union[str, Path], validate: bool = True, indent: int = 2
+    ) -> None:
+        """Export current configuration to JSON file.
+
+        Args:
+            file_path: Path to output JSON file
+            validate: Whether to validate required fields before export (default: True)
+            indent: JSON indentation (default: 2)
+
+        Example:
+            >>> cfg = Config(model=AppConfig, sources=[...])
+            >>> cfg.dump_json("config.json")
+        """
+        from varlord.exporters import export_json
+
+        config_dict = self.to_dict(validate=validate)
+        export_json(config_dict, file_path, indent=indent)
+
+    def dump_yaml(
+        self,
+        file_path: Union[str, Path],
+        validate: bool = True,
+        default_flow_style: bool = False,
+    ) -> None:
+        """Export current configuration to YAML file.
+
+        Args:
+            file_path: Path to output YAML file
+            validate: Whether to validate required fields before export (default: True)
+            default_flow_style: Use flow style (default: False, uses block style)
+
+        Example:
+            >>> cfg = Config(model=AppConfig, sources=[...])
+            >>> cfg.dump_yaml("config.yaml")
+
+        Raises:
+            ImportError: If PyYAML is not installed
+        """
+        from varlord.exporters import export_yaml
+
+        config_dict = self.to_dict(validate=validate)
+        export_yaml(config_dict, file_path, default_flow_style=default_flow_style)
+
+    def dump_toml(self, file_path: Union[str, Path], validate: bool = True) -> None:
+        """Export current configuration to TOML file.
+
+        Args:
+            file_path: Path to output TOML file
+            validate: Whether to validate required fields before export (default: True)
+
+        Example:
+            >>> cfg = Config(model=AppConfig, sources=[...])
+            >>> cfg.dump_toml("config.toml")
+
+        Raises:
+            ImportError: If tomli-w is not installed
+        """
+        from varlord.exporters import export_toml
+
+        config_dict = self.to_dict(validate=validate)
+        export_toml(config_dict, file_path)
+
+    def dump_env(
+        self,
+        file_path: Union[str, Path],
+        validate: bool = True,
+        prefix: str = "",
+        uppercase: bool = True,
+        nested_separator: str = "__",
+    ) -> None:
+        """Export current configuration to .env file.
+
+        Args:
+            file_path: Path to output .env file
+            validate: Whether to validate required fields before export (default: True)
+            prefix: Optional prefix for all environment variable names (e.g., ``APP_``)
+            uppercase: Convert keys to uppercase (default: True)
+            nested_separator: Separator for nested keys (default: "__")
+
+        Example:
+            >>> cfg = Config(model=AppConfig, sources=[...])
+            >>> cfg.dump_env(".env", prefix="APP_")
+            # Creates: APP_HOST=localhost
+            #          APP_PORT=8000
+        """
+        from varlord.exporters import export_env
+
+        config_dict = self.to_dict(validate=validate)
+        export_env(
+            config_dict,
+            file_path,
+            prefix=prefix,
+            uppercase=uppercase,
+            nested_separator=nested_separator,
+        )
 
     def __repr__(self) -> str:
         """Return string representation."""
