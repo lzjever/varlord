@@ -355,6 +355,54 @@ class TestCheckVariablesRealWorldScenarios:
         assert "db_host" in output
         assert "db_port" in output
 
+    def test_check_variables_filters_non_leaf_nodes(self):
+        """Test that check-variables filters out non-leaf nodes (intermediate nested config objects)."""
+        from dataclasses import dataclass, field
+
+        @dataclass
+        class DBConfig:
+            host: str = field(default="localhost")
+            port: int = field(default=5432)
+
+        @dataclass
+        class AppConfig:
+            api_key: str = field()
+            db: DBConfig = field(default_factory=lambda: DBConfig())
+
+        cfg = Config(
+            model=AppConfig,
+            sources=[sources.Env()],
+        )
+
+        output = cfg.format_diagnostic_table()
+
+        # Should show leaf nodes only
+        assert "api_key" in output
+        assert "db.host" in output
+        assert "db.port" in output
+
+        # Should NOT show non-leaf nodes (db itself)
+        # Check that "db" is not a standalone row (it might appear in "db.host" or "db.port")
+        lines = output.split("\n")
+        variable_column_lines = [
+            line
+            for line in lines
+            if "|" in line and ("Variable" in line or "db " in line or "db     |" in line)
+        ]
+        # Should not have a row with just "db" as the variable (without .host or .port)
+        db_standalone_rows = [
+            line
+            for line in variable_column_lines
+            if "| db " in line or "| db     |" in line or "| db      |" in line
+        ]
+        # Filter out lines that contain db.host or db.port
+        db_standalone_rows = [
+            line for line in db_standalone_rows if "db.host" not in line and "db.port" not in line
+        ]
+        assert len(db_standalone_rows) == 0, (
+            f"Found non-leaf node 'db' in output: {db_standalone_rows}"
+        )
+
     def test_source_load_times(self):
         """Test that load times are measured and displayed."""
         cfg = Config(

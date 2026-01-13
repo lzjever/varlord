@@ -711,6 +711,19 @@ class Config:
         # Get all field info
         field_infos = get_all_fields_info(self._model)
 
+        # Filter out non-leaf nodes (intermediate nested config objects)
+        # A field is a non-leaf node if its normalized_key is a prefix of another field's key
+        all_keys = {field_info.normalized_key for field_info in field_infos}
+        leaf_field_infos = []
+        for field_info in field_infos:
+            key = field_info.normalized_key
+            # Check if this key is a prefix of any other key (non-leaf node)
+            is_non_leaf = any(
+                other_key.startswith(key + ".") for other_key in all_keys if other_key != key
+            )
+            if not is_non_leaf:
+                leaf_field_infos.append(field_info)
+
         # Load configuration from all sources (without validation)
         config_dict = self._load_config_dict(validate=False)
 
@@ -748,9 +761,9 @@ class Config:
                 else:
                     source_statuses[source.id] = f"Failed: {str(e)[:50]}"  # 真正的错误
 
-        # Build table rows
+        # Build table rows (only for leaf nodes)
         rows = []
-        for field_info in field_infos:
+        for field_info in leaf_field_infos:
             key = field_info.normalized_key
             value = config_dict.get(key)
 
