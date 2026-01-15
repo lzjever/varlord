@@ -5,9 +5,13 @@ Varlord Documentation
 
 Welcome to Varlord's documentation!
 
-Varlord is a powerful Python configuration management library that provides a unified interface 
-for loading configuration from multiple sources with customizable priority ordering and optional 
+Varlord is a powerful Python configuration management library that provides a unified interface
+for loading configuration from multiple sources with customizable priority ordering and optional
 dynamic updates via etcd.
+
+.. note::
+   **New in v0.8.0**: Unified exception hierarchy, improved error handling, and comprehensive
+   security enhancements. See the :doc:`changelog` for details.
 
 .. grid:: 2
    :gutter: 2

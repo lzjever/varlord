@@ -1,7 +1,5 @@
 """Tests for test fixtures functionality."""
 
-from pathlib import Path
-
 
 def test_datadir_fixture_exists(datadir):
     """Test that datadir fixture points to correct location."""

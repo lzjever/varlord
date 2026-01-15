@@ -423,7 +423,7 @@ class Config:
         Returns:
             Dictionary mapping parent keys to their nested key-value pairs
         """
-        from dataclasses import fields, is_dataclass
+        from dataclasses import is_dataclass
 
         nested_collections: dict[str, dict[str, Any]] = {}
         for key, value in flat_dict.items():
@@ -456,7 +456,7 @@ class Config:
             field_info: Dictionary mapping field names to field objects
             result: Result dictionary to populate
         """
-        from dataclasses import asdict, fields, is_dataclass
+        from dataclasses import asdict, is_dataclass
 
         for parent_key, nested_flat in nested_collections.items():
             if parent_key not in field_info:

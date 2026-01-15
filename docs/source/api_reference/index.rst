@@ -7,6 +7,7 @@ Complete API documentation for all Varlord classes and functions.
    :maxdepth: 2
 
    config
+   exceptions
    store
    sources
    policy

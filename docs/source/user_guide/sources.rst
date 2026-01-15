@@ -372,3 +372,99 @@ To enable watch support in a custom source, you **must**:
 
 **Important**: The ``supports_watch()`` method is the only way to indicate watch support. Simply overriding ``watch()`` is not sufficient - you must also override ``supports_watch()``.
 
+
+Error Handling
+~~~~~~~~~~~~~~
+
+.. note::
+   **New in v0.8.0**: All sources now use the unified exception hierarchy inheriting from :class:`~varlord.VarlordError`.
+   This makes error handling more consistent and provides better error codes for programmatic handling.
+
+.. code-block:: python
+
+   from varlord import Config, VarlordError, ConfigLoadError, ValidationError
+
+   cfg = Config(model=AppConfig, sources=[...])
+
+   try:
+       config = cfg.load()
+   except ConfigLoadError as e:
+       # Source failed to load
+       print(f"Failed to load from {e.source_name}: {e.message}")
+   except ValidationError as e:
+       # Validation failed
+       print(f"Field {e.field_name} failed validation: {e.message}")
+   except VarlordError as e:
+       # Any varlord error
+       print(f"Configuration error {e.code}: {e.message}")
+
+Common Pitfalls
+~~~~~~~~~~~~~~~
+
+.. warning::
+   **Pitfall 1: Not catching specific exceptions**
+
+   .. code-block:: python
+
+      # ❌ Bad: Catches all exceptions
+      try:
+          config = cfg.load()
+      except Exception as e:
+          print(f"Error: {e}")
+
+      # ✅ Good: Catch specific varlord exceptions
+      try:
+          config = cfg.load()
+      except VarlordError as e:
+          print(f"Error {e.code}: {e.message}")
+
+.. warning::
+   **Pitfall 2: Forgetting that model is auto-injected**
+
+   .. code-block:: python
+
+      # ❌ Bad: Unnecessarily passing model
+      cfg = Config(
+          model=AppConfig,
+          sources=[
+              sources.Env(model=AppConfig),  # Unnecessary!
+              sources.DotEnv(model=AppConfig),  # Unnecessary!
+          ],
+      )
+
+      # ✅ Good: Let Config auto-inject the model
+      cfg = Config(
+          model=AppConfig,
+          sources=[
+              sources.Env(),  # Model auto-injected
+              sources.DotEnv(),  # Model auto-injected
+          ],
+      )
+
+.. warning::
+   **Pitfall 3: Not checking certificate file existence for etcd**
+
+   .. code-block:: python
+
+      # ❌ Bad: Certificate file might not exist
+      source = sources.Etcd(
+          host="etcd.example.com",
+          ca_cert="./ca.cert.pem",  # FileNotFoundError if missing!
+      )
+
+      # ✅ Good: Check file exists first
+      from pathlib import Path
+
+      cert_path = Path("./ca.cert.pem")
+      if not cert_path.exists():
+          raise FileNotFoundError(f"Certificate file not found: {cert_path}")
+
+      source = sources.Etcd(
+          host="etcd.example.com",
+          ca_cert=str(cert_path),
+      )
+
+.. note::
+   **Best Practice**: Always use ``try-except`` with specific varlord exceptions when loading configuration,
+   especially in production code. This allows you to handle configuration errors gracefully and provide
+   meaningful error messages to users.

@@ -127,10 +127,10 @@ class TestConfigExport:
 
         try:
             cfg.dump_toml(file_path)
-            import tomli_w
+            import tomli
 
             with open(file_path, "rb") as f:
-                data = tomli_w.load(f)
+                data = tomli.load(f)
             assert data["api_key"] == "test-key"
             assert data["port"] == 9000
             assert data["db"]["host"] == "localhost"
