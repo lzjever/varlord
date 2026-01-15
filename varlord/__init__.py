@@ -7,6 +7,16 @@ with customizable priority ordering and optional dynamic updates.
 
 from varlord import sources
 from varlord.config import Config
+from varlord.exceptions import (
+    ConfigError,
+    ConfigLoadError,
+    ConversionError,
+    ModelDefinitionError,
+    RequiredFieldError,
+    SourceLoadError,
+    ValidationError,
+    VarlordError,
+)
 from varlord.global_config import (
     clear_global_configs,
     get_global_config,
@@ -33,6 +43,15 @@ __all__ = [
     "remove_global_config",
     "clear_global_configs",
     "list_global_configs",
+    # Exceptions
+    "VarlordError",
+    "ConfigError",
+    "ConfigLoadError",
+    "SourceLoadError",
+    "ValidationError",
+    "RequiredFieldError",
+    "ModelDefinitionError",
+    "ConversionError",
 ]
 
 __version__ = "0.7.3"

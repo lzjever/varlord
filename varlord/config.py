@@ -337,6 +337,207 @@ class Config:
         # Create and return ConfigStore
         return ConfigStore(resolver=resolver, model=self._model)
 
+    def _unwrap_optional_type(self, field_type: type) -> type:
+        """Unwrap Optional[T] to get T.
+
+        For Union[T, None] types, returns T. For other types, returns the original type.
+
+        Args:
+            field_type: Field type to unwrap
+
+        Returns:
+            The non-None type from Optional[T], or the original type
+
+        Example:
+            >>> self._unwrap_optional_type(Optional[str])
+            <class 'str'>
+            >>> self._unwrap_optional_type(str)
+            <class 'str'>
+        """
+        from typing import Union, get_args, get_origin
+
+        origin = get_origin(field_type)
+        if origin is Union:
+            args = get_args(field_type)
+            if type(None) in args:
+                # Get the non-None type
+                non_none_types = [arg for arg in args if arg is not type(None)]
+                if non_none_types:
+                    return non_none_types[0]
+        return field_type
+
+    def _process_dataclass_instances(self, flat_dict: dict[str, Any]) -> dict[str, Any]:
+        """Convert all dataclass instances in flat_dict to dicts.
+
+        Args:
+            flat_dict: Dictionary that may contain dataclass instances as values
+
+        Returns:
+            Dictionary with all dataclass instances converted to dicts
+        """
+        from dataclasses import asdict, is_dataclass
+
+        result = {}
+        for key, value in flat_dict.items():
+            if is_dataclass(type(value)):
+                result[key] = asdict(value)
+            else:
+                result[key] = value
+        return result
+
+    def _process_flat_keys(
+        self,
+        flat_dict: dict[str, Any],
+        field_info: dict,
+        result: dict[str, Any],
+    ) -> None:
+        """Process non-nested (flat) keys with type conversion.
+
+        Args:
+            flat_dict: Processed flat dictionary
+            field_info: Dictionary mapping field names to field objects
+            result: Result dictionary to populate
+        """
+        from varlord.converters import convert_value
+
+        for key, value in flat_dict.items():
+            if "." not in key and key in field_info:
+                field = field_info[key]
+                try:
+                    converted_value = convert_value(value, field.type, key=key)
+                    result[key] = converted_value
+                except (ValueError, TypeError):
+                    result[key] = value
+
+    def _collect_nested_keys(
+        self,
+        flat_dict: dict[str, Any],
+        field_info: dict,
+    ) -> dict[str, dict[str, Any]]:
+        """Collect all nested keys grouped by parent key.
+
+        Args:
+            flat_dict: Processed flat dictionary
+            field_info: Dictionary mapping field names to field objects
+
+        Returns:
+            Dictionary mapping parent keys to their nested key-value pairs
+        """
+        from dataclasses import fields, is_dataclass
+
+        nested_collections: dict[str, dict[str, Any]] = {}
+        for key, value in flat_dict.items():
+            if "." in key:
+                parts = key.split(".", 1)
+                parent_key = parts[0]
+                child_key = parts[1]
+
+                if parent_key in field_info:
+                    field = field_info[parent_key]
+                    inner_type = self._unwrap_optional_type(field.type)
+
+                    if is_dataclass(inner_type):
+                        # Collect all nested keys for this parent
+                        if parent_key not in nested_collections:
+                            nested_collections[parent_key] = {}
+                        nested_collections[parent_key][child_key] = value
+        return nested_collections
+
+    def _process_nested_keys(
+        self,
+        nested_collections: dict[str, dict[str, Any]],
+        field_info: dict,
+        result: dict[str, Any],
+    ) -> None:
+        """Process collected nested structures recursively.
+
+        Args:
+            nested_collections: Nested keys grouped by parent key
+            field_info: Dictionary mapping field names to field objects
+            result: Result dictionary to populate
+        """
+        from dataclasses import asdict, fields, is_dataclass
+
+        for parent_key, nested_flat in nested_collections.items():
+            if parent_key not in field_info:
+                continue
+
+            field = field_info[parent_key]
+            inner_type = self._unwrap_optional_type(field.type)
+
+            if not is_dataclass(inner_type):
+                continue
+
+            # Initialize parent dict if needed
+            if parent_key not in result:
+                result[parent_key] = {}
+            elif not isinstance(result[parent_key], dict):
+                result[parent_key] = {}
+
+            # Recursively process the complete nested structure
+            nested_result = self._flatten_to_nested(nested_flat, inner_type)
+
+            # Update result[parent_key] with nested_result
+            for nested_key, nested_value in nested_result.items():
+                if is_dataclass(type(nested_value)):
+                    result[parent_key][nested_key] = asdict(nested_value)
+                else:
+                    result[parent_key][nested_key] = nested_value
+
+    def _convert_to_dataclasses(
+        self,
+        result: dict[str, Any],
+        field_info: dict,
+    ) -> None:
+        """Convert nested dicts to dataclass instances with type conversion.
+
+        Args:
+            result: Result dictionary with nested dicts
+            field_info: Dictionary mapping field names to field objects
+        """
+        from dataclasses import asdict, fields, is_dataclass
+
+        from varlord.converters import convert_value
+
+        for key, value in list(result.items()):
+            if key not in field_info:
+                continue
+
+            field = field_info[key]
+            inner_type = self._unwrap_optional_type(field.type)
+
+            if not is_dataclass(inner_type) or not isinstance(value, dict):
+                continue
+
+            # Convert any dataclass instances in value to dicts
+            value_dict = {}
+            for nested_key, nested_value in value.items():
+                if is_dataclass(type(nested_value)):
+                    value_dict[nested_key] = asdict(nested_value)
+                else:
+                    value_dict[nested_key] = nested_value
+
+            # Recursively process and convert types
+            nested_instance = self._flatten_to_nested(value_dict, inner_type)
+
+            # Filter out init=False fields
+            init_fields = {f.name: f for f in fields(inner_type) if getattr(f, "init", True)}
+            filtered_instance = {k: v for k, v in nested_instance.items() if k in init_fields}
+
+            # Convert all values to correct types
+            nested_fields = {f.name: f for f in fields(inner_type)}
+            for nested_key, nested_value in filtered_instance.items():
+                if nested_key in nested_fields:
+                    nested_field = nested_fields[nested_key]
+                    try:
+                        filtered_instance[nested_key] = convert_value(
+                            nested_value, nested_field.type, key=f"{key}.{nested_key}"
+                        )
+                    except (ValueError, TypeError):
+                        pass
+
+            result[key] = inner_type(**filtered_instance)
+
     def _dict_to_model(self, config_dict: dict[str, Any]) -> Any:
         """Convert dictionary to model instance.
 
@@ -383,195 +584,24 @@ class Config:
         Returns:
             Nested dictionary matching the model structure
         """
-        from dataclasses import asdict, fields, is_dataclass
+        from dataclasses import fields
 
-        from varlord.converters import convert_value
-
+        # Get field info
         field_info = {f.name: f for f in fields(model)}
         result: dict[str, Any] = {}
 
-        # Step 1: Convert all dataclass instances in flat_dict to dicts
-        flat_dict_processed = {}
-        for key, value in flat_dict.items():
-            if is_dataclass(type(value)):
-                flat_dict_processed[key] = asdict(value)
-            else:
-                flat_dict_processed[key] = value
+        # Step 1: Convert all dataclass instances to dicts
+        flat_dict_processed = self._process_dataclass_instances(flat_dict)
 
-        # Step 2: Process flat keys first (non-nested)
-        for key, value in flat_dict_processed.items():
-            if "." not in key:
-                if key in field_info:
-                    field = field_info[key]
-                    try:
-                        converted_value = convert_value(value, field.type, key=key)
-                        result[key] = converted_value
-                    except (ValueError, TypeError):
-                        result[key] = value
+        # Step 2: Process flat (non-nested) keys
+        self._process_flat_keys(flat_dict_processed, field_info, result)
 
-        # Step 3: Process nested keys - COLLECT FIRST, THEN PROCESS
-        # First pass: Collect all nested keys for each parent key
-        nested_collections: dict[str, dict[str, Any]] = {}
-        for key, value in flat_dict_processed.items():
-            if "." in key:
-                parts = key.split(".", 1)
-                parent_key = parts[0]
-                child_key = parts[1]
+        # Step 3: Collect and process nested keys
+        nested_collections = self._collect_nested_keys(flat_dict_processed, field_info)
+        self._process_nested_keys(nested_collections, field_info, result)
 
-                if parent_key in field_info:
-                    field = field_info[parent_key]
-                    # Handle Optional[Dataclass] types
-                    from typing import Union, get_args, get_origin
-
-                    field_type = field.type
-                    origin = get_origin(field_type)
-                    inner_type = field_type
-
-                    if origin is Union:
-                        args = get_args(field_type)
-                        if type(None) in args:
-                            # Get the non-None type
-                            non_none_types = [arg for arg in args if arg is not type(None)]
-                            if non_none_types:
-                                inner_type = non_none_types[0]
-
-                    if is_dataclass(inner_type):
-                        # Collect all nested keys for this parent
-                        if parent_key not in nested_collections:
-                            nested_collections[parent_key] = {}
-                        nested_collections[parent_key][child_key] = value
-
-        # Second pass: Process collected nested structures
-        for parent_key, nested_flat in nested_collections.items():
-            if parent_key in field_info:
-                field = field_info[parent_key]
-                # Handle Optional[Dataclass] types
-                from typing import Union, get_args, get_origin
-
-                field_type = field.type
-                origin = get_origin(field_type)
-                inner_type = field_type
-
-                if origin is Union:
-                    args = get_args(field_type)
-                    if type(None) in args:
-                        # Get the non-None type
-                        non_none_types = [arg for arg in args if arg is not type(None)]
-                        if non_none_types:
-                            inner_type = non_none_types[0]
-
-                if is_dataclass(inner_type):
-                    # Initialize parent dict if needed
-                    if parent_key not in result:
-                        result[parent_key] = {}
-                    elif not isinstance(result[parent_key], dict):
-                        result[parent_key] = {}
-
-                    # Recursively process the complete nested structure
-                    nested_result = self._flatten_to_nested(nested_flat, inner_type)
-
-                    # Update result[parent_key] with nested_result
-                    for nested_key, nested_value in nested_result.items():
-                        if is_dataclass(type(nested_value)):
-                            result[parent_key][nested_key] = asdict(nested_value)
-                        else:
-                            result[parent_key][nested_key] = nested_value
-                elif is_dataclass(field.type):
-                    # Non-optional dataclass (original logic)
-                    # Initialize parent dict if needed
-                    if parent_key not in result:
-                        result[parent_key] = {}
-                    elif not isinstance(result[parent_key], dict):
-                        result[parent_key] = {}
-
-                        # Recursively process the complete nested structure
-                        nested_result = self._flatten_to_nested(nested_flat, field.type)
-
-                        # Update result[parent_key] with nested_result
-                        for nested_key, nested_value in nested_result.items():
-                            if is_dataclass(type(nested_value)):
-                                result[parent_key][nested_key] = asdict(nested_value)
-                            else:
-                                result[parent_key][nested_key] = nested_value
-
-        # Step 4: Convert nested dicts to dataclass instances with type conversion
-        for key, value in list(result.items()):
-            if key in field_info:
-                field = field_info[key]
-                # Handle Optional[Dataclass] types
-                from typing import Union, get_args, get_origin
-
-                field_type = field.type
-                origin = get_origin(field_type)
-                inner_type = field_type
-
-                if origin is Union:
-                    args = get_args(field_type)
-                    if type(None) in args:
-                        # Get the non-None type
-                        non_none_types = [arg for arg in args if arg is not type(None)]
-                        if non_none_types:
-                            inner_type = non_none_types[0]
-
-                if is_dataclass(inner_type) and isinstance(value, dict):
-                    # First, convert any dataclass instances in value to dicts
-                    value_dict = {}
-                    for nested_key, nested_value in value.items():
-                        if is_dataclass(type(nested_value)):
-                            value_dict[nested_key] = asdict(nested_value)
-                        else:
-                            value_dict[nested_key] = nested_value
-                    # Recursively process and convert types
-                    nested_instance = self._flatten_to_nested(value_dict, inner_type)
-                    # Convert all values to correct types
-                    nested_fields = {f.name: f for f in fields(inner_type)}
-                    # Filter out init=False fields
-                    init_fields = {
-                        f.name: f for f in fields(inner_type) if getattr(f, "init", True)
-                    }
-                    filtered_instance = {
-                        k: v for k, v in nested_instance.items() if k in init_fields
-                    }
-                    for nested_key, nested_value in filtered_instance.items():
-                        if nested_key in nested_fields:
-                            nested_field = nested_fields[nested_key]
-                            try:
-                                filtered_instance[nested_key] = convert_value(
-                                    nested_value, nested_field.type, key=f"{key}.{nested_key}"
-                                )
-                            except (ValueError, TypeError):
-                                pass
-                    result[key] = inner_type(**filtered_instance)
-                elif is_dataclass(field.type) and isinstance(value, dict):
-                    # Non-optional dataclass (original logic)
-                    # First, convert any dataclass instances in value to dicts
-                    value_dict = {}
-                    for nested_key, nested_value in value.items():
-                        if is_dataclass(type(nested_value)):
-                            value_dict[nested_key] = asdict(nested_value)
-                        else:
-                            value_dict[nested_key] = nested_value
-                    # Recursively process and convert types
-                    nested_instance = self._flatten_to_nested(value_dict, field.type)
-                    # Convert all values to correct types
-                    nested_fields = {f.name: f for f in fields(field.type)}
-                    # Filter out init=False fields
-                    init_fields = {
-                        f.name: f for f in fields(field.type) if getattr(f, "init", True)
-                    }
-                    filtered_instance = {
-                        k: v for k, v in nested_instance.items() if k in init_fields
-                    }
-                    for nested_key, nested_value in filtered_instance.items():
-                        if nested_key in nested_fields:
-                            nested_field = nested_fields[nested_key]
-                            try:
-                                filtered_instance[nested_key] = convert_value(
-                                    nested_value, nested_field.type, key=f"{key}.{nested_key}"
-                                )
-                            except (ValueError, TypeError):
-                                pass
-                    result[key] = field.type(**filtered_instance)
+        # Step 4: Convert nested dicts to dataclass instances
+        self._convert_to_dataclasses(result, field_info)
 
         return result
 
