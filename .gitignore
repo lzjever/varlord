@@ -117,6 +117,9 @@ ENV/
 env.bak/
 venv.bak/
 
+# Allow test fixtures
+!tests/fixtures/**/*.env
+
 # Spyder project settings
 .spyderproject
 .spyproject
