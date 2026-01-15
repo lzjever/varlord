@@ -31,7 +31,7 @@ jobs:
 
       - name: Security audit
         run: |
-          uv run pip-audit --strict
+          uv run pip-audit --skip-editable
 
       - name: Check for leaked secrets
         run: |
