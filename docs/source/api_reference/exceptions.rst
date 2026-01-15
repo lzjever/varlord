@@ -1,11 +1,6 @@
 Exceptions
 ==========
 
-.. module:: varlord.exceptions
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 Exception Hierarchy
 --------------------
 

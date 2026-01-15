@@ -56,7 +56,7 @@ class Config:
             show_source_help: Whether to show source mapping help in errors (default: True)
 
         Raises:
-            ModelDefinitionError: If any field is missing required/optional metadata
+            varlord.exceptions.ModelDefinitionError: If any field is missing required/optional metadata
 
         Note:
             - Priority is determined by sources order: later sources override earlier ones
@@ -207,7 +207,7 @@ class Config:
             Merged configuration dictionary
 
         Raises:
-            RequiredFieldError: If required fields are missing and validate=True
+            varlord.exceptions.RequiredFieldError: If required fields are missing and validate=True
         """
         # Step 1: Create defaults source (internal, not in user's sources list)
         defaults_source = self._create_defaults_source()
@@ -235,7 +235,7 @@ class Config:
                         If None, loads and validates current configuration.
 
         Raises:
-            RequiredFieldError: If required fields are missing.
+            varlord.exceptions.RequiredFieldError: If required fields are missing.
         """
         if config_dict is None:
             # Load configuration first (without validation)
@@ -300,7 +300,7 @@ class Config:
             Model instance with configuration loaded from all sources.
 
         Raises:
-            RequiredFieldError: If required fields are missing and validate=True.
+            varlord.exceptions.RequiredFieldError: If required fields are missing and validate=True.
 
         Note:
             This method loads configuration once. For dynamic updates,
