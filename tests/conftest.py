@@ -136,3 +136,39 @@ def sample_config_model():
         )
 
     return SampleConfig
+
+
+@pytest.fixture
+def datadir():
+    """提供测试 fixtures 目录路径。
+
+    Usage:
+        def test_yaml_load(datadir):
+            yaml_path = datadir / "yaml" / "config_valid.yaml"
+            ...
+    """
+    return Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def yaml_datadir(datadir):
+    """提供 YAML fixtures 目录路径"""
+    return datadir / "yaml"
+
+
+@pytest.fixture
+def json_datadir(datadir):
+    """提供 JSON fixtures 目录路径"""
+    return datadir / "json"
+
+
+@pytest.fixture
+def toml_datadir(datadir):
+    """提供 TOML fixtures 目录路径"""
+    return datadir / "toml"
+
+
+@pytest.fixture
+def env_datadir(datadir):
+    """提供 ENV fixtures 目录路径"""
+    return datadir / "env"

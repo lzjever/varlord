@@ -1,0 +1,20 @@
+# Nested YAML configuration for testing
+app:
+  name: MyApp
+  version: 1.0.0
+
+database:
+  primary:
+    host: db1.example.com
+    port: 5432
+  replica:
+    host: db2.example.com
+    port: 5432
+
+features:
+  authentication:
+    enabled: true
+    provider: oauth2
+  caching:
+    enabled: false
+    backend: redis

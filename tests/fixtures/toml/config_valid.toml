@@ -1,0 +1,17 @@
+# Valid TOML configuration for testing
+
+[database]
+host = "localhost"
+port = 5432
+name = "testdb"
+user = "admin"
+password = "secret123"
+
+[server]
+host = "0.0.0.0"
+port = 8000
+debug = true
+
+[cache]
+enabled = true
+ttl = 3600

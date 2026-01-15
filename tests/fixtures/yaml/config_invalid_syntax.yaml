@@ -1,0 +1,4 @@
+# Invalid YAML syntax for testing
+database:
+  host: localhost
+  port: [invalid  # ← Invalid YAML syntax
