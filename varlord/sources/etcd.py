@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import threading
 import warnings
+from pathlib import Path
 from typing import Any, Iterator, Mapping, Optional, Type
 
 try:
@@ -151,15 +152,40 @@ class Etcd(Source):
                     if self._timeout is not None:
                         client_kwargs["timeout"] = self._timeout
                     if self._ca_cert is not None:
+                        # Validate certificate file exists
+                        ca_path = Path(self._ca_cert)
+                        if not ca_path.exists():
+                            raise FileNotFoundError(
+                                f"CA certificate file not found: {self._ca_cert}"
+                            )
                         client_kwargs["ca_cert"] = self._ca_cert
                     if self._cert_key is not None:
+                        # Validate key file exists
+                        key_path = Path(self._cert_key)
+                        if not key_path.exists():
+                            raise FileNotFoundError(f"Client key file not found: {self._cert_key}")
                         client_kwargs["cert_key"] = self._cert_key
                     if self._cert_cert is not None:
+                        # Validate certificate file exists
+                        cert_path = Path(self._cert_cert)
+                        if not cert_path.exists():
+                            raise FileNotFoundError(
+                                f"Client certificate file not found: {self._cert_cert}"
+                            )
                         client_kwargs["cert_cert"] = self._cert_cert
                     if self._user is not None:
                         client_kwargs["user"] = self._user
                     if self._password is not None:
                         client_kwargs["password"] = self._password
+
+                    # Security warning: production should use TLS
+                    if self._ca_cert is None:
+                        warnings.warn(
+                            f"Etcd connection to {self._host}:{self._port} is not using TLS. "
+                            "This is not recommended for production environments.",
+                            RuntimeWarning,
+                            stacklevel=3,
+                        )
 
                     self._client = etcd3.client(**client_kwargs)
         return self._client

@@ -89,8 +89,15 @@ __pypackages__/
 .venv/
 # Note: uv.lock should be committed for reproducible builds
 
-# Certificates
+# Certificates and keys
 cert/
+*.pem
+*.key
+*.crt
+*.cer
+*.der
+*.p12
+*.pfx
 
 # Celery stuff
 celerybeat-schedule
@@ -101,6 +108,8 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+.env.*.local
 .venv
 env/
 venv/
